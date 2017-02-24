@@ -94,3 +94,6 @@ ENV/
 
 .idea
 *.o
+models/*
+layers.txt
+yl.txt

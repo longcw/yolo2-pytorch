@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 import torch.nn as nn
 import utils.network as net_utils
 
@@ -12,14 +13,14 @@ def _make_layers(in_channels, cfg):
         for sub_cfg in cfg:
             layer, in_channels = _make_layers(in_channels, sub_cfg)
             layers.append(layer)
-
-    for item in cfg:
-        if item == 'M':
-            layers.append(nn.MaxPool2d(kernel_size=2, stride=2))
-        else:
-            out_channels, ksize = item
-            layers.append(net_utils.Conv2d_BatchNorm(in_channels, out_channels, ksize, same_padding=True))
-            in_channels = out_channels
+    else:
+        for item in cfg:
+            if item == 'M':
+                layers.append(nn.MaxPool2d(kernel_size=2, stride=2))
+            else:
+                out_channels, ksize = item
+                layers.append(net_utils.Conv2d_BatchNorm(in_channels, out_channels, ksize, same_padding=True))
+                in_channels = out_channels
 
     return nn.Sequential(*layers), in_channels
 
@@ -72,6 +73,26 @@ class Darknet19(nn.Module):
 
         return conv5
 
+    def load_from_npz(self, fname):
+        dest_src = {'conv.weight': 'kernel', 'conv.bias': 'biases',
+                    'bn.weight': 'gamma', 'bn.bias': 'biases',
+                    'bn.running_mean': 'moving_mean', 'bn.running_var': 'moving_variance'}
+        params = np.load(fname)
+        own_dict = self.state_dict()
+        keys = own_dict.keys()
+        for i, start in enumerate(range(0, len(keys), 5)):
+            end = min(start+5, len(keys))
+            for key in keys[start:end]:
+                list_key = key.split('.')
+                ptype = dest_src['{}.{}'.format(list_key[-2], list_key[-1])]
+                src_key = '{}-convolutional/{}:0'.format(i, ptype)
+                # print own_dict[key].size(), params[src_key].shape
+                param = torch.from_numpy(params[src_key])
+                if ptype == 'kernel':
+                    param = param.permute(3, 2, 0, 1)
+                own_dict[key].copy_(param)
 
-
+if __name__ == '__main__':
+    net = Darknet19()
+    net.load_from_npz('models/yolo-voc.weights.npz')
 
