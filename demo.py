@@ -11,19 +11,22 @@ import cfgs.config_voc as cfg
 
 # hyper-parameters
 npz_fname = 'models/yolo-voc.weights.npz'
-# im_path = 'demo'
-im_path = '/media/longc/Data/data/2DMOT2015/train/ADL-Rundle-3/img1/'
+h5_fname = 'models/yolo-voc.weights.h5'
 
-#---
+im_path = 'demo'
+# im_path = '/media/longc/Data/data/2DMOT2015/train/ADL-Rundle-1/img1/'
+
+# ---
 
 net = Darknet19()
-net.load_from_npz(npz_fname)
-
+net_utils.load_net(h5_fname, net)
+# net.load_from_npz(npz_fname)
+# net_utils.save_net(h5_fname, net)
 net.cuda()
 net.eval()
+print('load model succ...')
 
 im_fnames = sorted((fname for fname in os.listdir(im_path) if os.path.splitext(fname)[-1] == '.jpg'))
-# im_fnames = ['person.jpg']
 for fname in im_fnames:
     fname = os.path.join(im_path, fname)
     print('process: {}'.format(fname))
@@ -35,5 +38,5 @@ for fname in im_fnames:
     np_netout = net_out.data.cpu().numpy()[0]
     im2show = im_utils.postprocess(np_netout, fname, cfg)
     cv2.imshow('test', im2show)
-    cv2.waitKey(1)
+    cv2.waitKey(0)
 
