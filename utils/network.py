@@ -10,7 +10,7 @@ class Conv2d(nn.Module):
         padding = int((kernel_size - 1) / 2) if same_padding else 0
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding=padding)
         self.bn = nn.BatchNorm2d(out_channels, eps=0.001, momentum=0, affine=True) if bn else None
-        self.relu = nn.ReLU(inplace=True) if relu else None
+        self.relu = nn.LeakyReLU(0.1, inplace=True) if relu else None
 
     def forward(self, x):
         x = self.conv(x)
@@ -28,7 +28,7 @@ class Conv2d_BatchNorm(nn.Module):
 
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding=padding, bias=False)
         self.bn = nn.BatchNorm2d(out_channels, momentum=0.01)
-        self.relu = nn.LeakyReLU(inplace=True) if relu else None
+        self.relu = nn.LeakyReLU(0.1, inplace=True) if relu else None
 
     def forward(self, x):
         x = self.conv(x)
@@ -104,6 +104,10 @@ def np_to_variable(x, is_cuda=True, dtype=torch.FloatTensor):
     if is_cuda:
         v = v.cuda()
     return v
+
+
+def variable_to_np_tf(x):
+    return x.data.cpu().numpy().transpose([0, 2, 3, 1])
 
 
 def set_trainable(model, requires_grad):

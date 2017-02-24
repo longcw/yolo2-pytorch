@@ -14,12 +14,13 @@ class ReorgFunction(Function):
         out_w, out_h, out_c = w / stride, h / stride, c * (stride * stride)
         out = torch.FloatTensor(bsize, out_c, out_h, out_w)
 
-        rev_stride = 1. / stride    # reverse
         if x.is_cuda:
             out = out.cuda()
-            reorg_layer.reorg_cuda(x, w, h, c, bsize, rev_stride, 1, out)
+            reorg_layer.reorg_cuda(x, out_w, out_h, out_c, bsize, stride, 0, out)
         else:
-            reorg_layer.reorg_cpu(x, w, h, c, bsize, rev_stride, 1, out)
+            reorg_layer.reorg_cpu(x, out_w, out_h, out_c, bsize, stride, 0, out)
+
+        return out
 
     def backward(self, grad_top):
         stride = self.stride
@@ -43,4 +44,5 @@ class ReorgLayer(torch.nn.Module):
         self.stride = stride
 
     def forward(self, x):
-        return ReorgFunction(self.stride)(x)
+        x = ReorgFunction(self.stride)(x)
+        return x
