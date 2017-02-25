@@ -10,12 +10,10 @@ import cfgs.config_voc as cfg
 
 
 # hyper-parameters
-npz_fname = 'models/yolo-voc.weights.npz'
+# npz_fname = 'models/yolo-voc.weights.npz'
 h5_fname = 'models/yolo-voc.weights.h5'
 
 im_path = 'demo'
-# im_path = '/media/longc/Data/data/2DMOT2015/train/ADL-Rundle-1/img1/'
-
 # ---
 
 net = Darknet19()
