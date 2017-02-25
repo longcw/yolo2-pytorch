@@ -24,6 +24,7 @@ net.cuda()
 net.eval()
 print('load model succ...')
 
+# im_fnames = ['person.jpg']
 im_fnames = sorted((fname for fname in os.listdir(im_path) if os.path.splitext(fname)[-1] == '.jpg'))
 for fname in im_fnames:
     fname = os.path.join(im_path, fname)

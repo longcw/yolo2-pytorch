@@ -1,7 +1,7 @@
 import numpy as np
 
 
-inp_size = np.array([544, 544], dtype=np.int)
+inp_size = np.array([416, 416], dtype=np.int)
 out_size = inp_size / 32
 
 # [region]

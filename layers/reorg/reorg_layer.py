@@ -29,12 +29,14 @@ class ReorgFunction(Function):
         out_w, out_h, out_c = w * stride, h * stride, c / (stride * stride)
         grad_bottom = torch.FloatTensor(bsize, out_c, out_h, out_w)
 
-        rev_stride = 1. / stride    # reverse
+        # rev_stride = 1. / stride    # reverse
         if grad_top.is_cuda:
             grad_bottom = grad_bottom.cuda()
-            reorg_layer.reorg_cuda(grad_top, w, h, c, bsize, rev_stride, 0, grad_bottom)
+            reorg_layer.reorg_cuda(grad_top, w, h, c, bsize, stride, 1, grad_bottom)
         else:
-            reorg_layer.reorg_cpu(grad_top, w, h, c, bsize, rev_stride, 0, grad_bottom)
+            reorg_layer.reorg_cpu(grad_top, w, h, c, bsize, stride, 1, grad_bottom)
+
+        return grad_bottom
 
 
 class ReorgLayer(torch.nn.Module):
