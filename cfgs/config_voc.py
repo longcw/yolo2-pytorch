@@ -9,8 +9,9 @@ label_names = ["aeroplane", "bicycle", "bird", "boat", "bottle",
     "bus", "car", "cat", "chair", "cow", "diningtable", "dog",
     "horse", "motorbike", "person", "pottedplant", "sheep", "sofa",
     "train", "tvmonitor"]
-classes = len(label_names)
-anchors = [(1.08, 1.19), (3.42, 4.41), (6.63, 11.38), (9.42, 5.11), (16.62, 10.52)]
+num_classes = len(label_names)
+anchors = np.asarray([(1.08, 1.19), (3.42, 4.41), (6.63, 11.38), (9.42, 5.11), (16.62, 10.52)], dtype=np.float)
+num_anchors = len(anchors)
 
 
 def _to_color(indx, base):
@@ -21,8 +22,9 @@ def _to_color(indx, base):
     g = 2 - (indx % base2) % base
     return b * 127, r * 127, g * 127
 
-base = int(np.ceil(pow(classes, 1. / 3)))
-colors = [_to_color(x, base) for x in range(classes)]
+# for display
+base = int(np.ceil(pow(num_classes, 1. / 3)))
+colors = [_to_color(x, base) for x in range(num_classes)]
 
 
 bias_match = 1

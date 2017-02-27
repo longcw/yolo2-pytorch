@@ -1,20 +1,21 @@
 import torch
 import numpy as np
 import torch.nn as nn
+import torch.nn.functional as F
 import utils.network as net_utils
 
 from layers.reorg.reorg_layer import ReorgLayer
 
 
-def _make_layers(in_channels, cfg):
+def _make_layers(in_channels, net_cfg):
     layers = []
 
-    if len(cfg) > 0 and isinstance(cfg[0], list):
-        for sub_cfg in cfg:
+    if len(net_cfg) > 0 and isinstance(net_cfg[0], list):
+        for sub_cfg in net_cfg:
             layer, in_channels = _make_layers(in_channels, sub_cfg)
             layers.append(layer)
     else:
-        for item in cfg:
+        for item in net_cfg:
             if item == 'M':
                 layers.append(nn.MaxPool2d(kernel_size=2, stride=2))
             else:
@@ -27,10 +28,11 @@ def _make_layers(in_channels, cfg):
 
 
 class Darknet19(nn.Module):
-    def __init__(self):
+    def __init__(self, cfg):
         super(Darknet19, self).__init__()
+        self.cfg = cfg
 
-        cfgs = [
+        net_cfgs = [
             # conv1s
             [(32, 3)],
             ['M', (64, 3)],
@@ -47,18 +49,19 @@ class Darknet19(nn.Module):
         ]
 
         # darknet
-        self.conv1s, c1 = _make_layers(3, cfgs[0:5])
-        self.conv2, c2 = _make_layers(c1, cfgs[5])
+        self.conv1s, c1 = _make_layers(3, net_cfgs[0:5])
+        self.conv2, c2 = _make_layers(c1, net_cfgs[5])
         # ---
-        self.conv3, c3 = _make_layers(c2, cfgs[6])
+        self.conv3, c3 = _make_layers(c2, net_cfgs[6])
 
         stride = 2
         self.reorg = ReorgLayer(stride=2)   # stride*stride times the channels of conv1s
         # cat [conv1s, conv3]
-        self.conv4, c4 = _make_layers((c1*(stride*stride) + c3), cfgs[7])
+        self.conv4, c4 = _make_layers((c1*(stride*stride) + c3), net_cfgs[7])
 
         # linear
-        self.conv5 = net_utils.Conv2d(c4, 125, 1, 1, relu=False)
+        out_channels = cfg.num_anchors * (cfg.num_classes + 5)
+        self.conv5 = net_utils.Conv2d(c4, out_channels, 1, 1, relu=False)
 
     def forward(self, im_data):
         conv1s = self.conv1s(im_data)
@@ -71,9 +74,29 @@ class Darknet19(nn.Module):
         cat_1_3 = torch.cat([conv1s_reorg, conv3], 1)
 
         conv4 = self.conv4(cat_1_3)
-        conv5 = self.conv5(conv4)
+        conv5 = self.conv5(conv4)   # batch_size, out_channels, h, w
 
-        return conv5
+        # for training
+        if self.training:
+            pass
+
+        # for detection
+        # bsize, c, h, w -> bsize, h, w, c -> h x w x num_anchors, 5+num_classes
+        bsize, _, h, w = conv5.size()
+        assert bsize == 1, 'detection only support one image per batch'
+        conv5_reshaped = conv5.permute(0, 2, 3, 1).contiguous().view(-1, self.cfg.num_classes + 5)
+
+        # tx, ty, tw, th, to -> sig(tx), sig(ty), exp(tw), exp(th), sig(to)
+        xy_pred = F.sigmoid(conv5_reshaped[:, 0:2])
+        wh_pred = torch.exp(conv5_reshaped[:, 2:4])
+        bbox_pred = torch.cat([xy_pred, wh_pred], 1)
+
+        iou_pred = F.sigmoid(conv5_reshaped[:, 4:5])
+
+        score_pred = conv5_reshaped[:, 5:]
+        prob_pred = F.softmax(score_pred)
+
+        return bbox_pred, iou_pred, prob_pred
 
     def load_from_npz(self, fname):
         dest_src = {'conv.weight': 'kernel', 'conv.bias': 'biases',
@@ -94,7 +117,7 @@ class Darknet19(nn.Module):
                     param = param.permute(3, 2, 0, 1)
                 own_dict[key].copy_(param)
 
-if __name__ == '__main__':
-    net = Darknet19()
-    net.load_from_npz('models/yolo-voc.weights.npz')
+# if __name__ == '__main__':
+#     net = Darknet19()
+#     net.load_from_npz('models/yolo-voc.weights.npz')
 

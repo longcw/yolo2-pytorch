@@ -2,6 +2,10 @@
 
 CUDA_PATH=/usr/local/cuda/
 
+cd utils
+python build.py build_ext --inplace
+cd ../
+
 cd layers/reorg/src
 echo "Compiling reorg layer kernels by nvcc..."
 nvcc -c -o reorg_cuda_kernel.cu.o reorg_cuda_kernel.cu -x cu -Xcompiler -fPIC -arch=sm_52
