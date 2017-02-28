@@ -39,22 +39,23 @@ class ImageDataset(object):
         self._im_processor = im_processor
 
     def next_batch(self):
-        batch = {'images': [], 'gt_boxes': [], 'gt_classes': [], 'dontcare': []}
+        batch = {'images': [], 'gt_boxes': [], 'gt_classes': [], 'dontcare': [], 'origin_im': []}
         i = 0
         while i < self.batch_size:
             try:
-                images, gt_boxes, classes, dontcare = self.gen.next()
+                images, gt_boxes, classes, dontcare, origin_im = self.gen.next()
                 batch['images'].append(images)
                 batch['gt_boxes'].append(gt_boxes)
                 batch['gt_classes'].append(classes)
                 batch['dontcare'].append(dontcare)
+                batch['origin_im'].append(origin_im)
                 i += 1
             except (StopIteration, AttributeError):
                 indexes = np.arange(len(self.image_names), dtype=np.int)
                 if self._shuffle:
                     np.random.shuffle(indexes)
                 self.gen = self.pool.imap(self._im_processor,
-                                          ([self.image_names[i], self.annotations[i], self.dst_size] for i in indexes),
+                                          ([self.image_names[i], self.get_annotation(i), self.dst_size] for i in indexes),
                                           chunksize=self.batch_size)
                 self._epoch += 1
         batch['images'] = np.asarray(batch['images'])
@@ -79,6 +80,11 @@ class ImageDataset(object):
         all_boxes[class][image] = [] or np.array of shape #dets x 5
         """
         raise NotImplementedError
+
+    def get_annotation(self, i):
+        if self.annotations is None:
+            return None
+        return self.annotations[i]
 
     @property
     def name(self):

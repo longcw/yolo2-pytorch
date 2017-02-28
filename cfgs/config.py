@@ -37,14 +37,20 @@ colors = [_to_color(x, base) for x in range(num_classes)]
 thresh = 0.3
 
 
-# train config
+# dir config
 ############################
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-DATA_DIR = os.path.abspath(os.path.join(ROOT_DIR, 'data'))
+DATA_DIR = os.path.join(ROOT_DIR, 'data')
+MODEL_DIR = os.path.join(ROOT_DIR, 'models')
+TRAIN_DIR = os.path.join(MODEL_DIR, 'training')
+TEST_DIR = os.path.join(MODEL_DIR, 'testing')
 
-pretrained_model = os.path.join('models', 'darknet19.weights.npz')
-output_dir = os.path.join('models', 'training', exp_name)
-mkdir(output_dir, max_depth=3)
+trained_model = os.path.join(MODEL_DIR, h5_fname)
+pretrained_model = os.path.join(MODEL_DIR, pretrained_fname)
+train_output_dir = os.path.join(TRAIN_DIR, exp_name)
+test_output_dir = os.path.join(TEST_DIR, imdb_test, h5_fname)
+mkdir(train_output_dir, max_depth=3)
+mkdir(test_output_dir, max_depth=4)
 
 rand_seed = 1024
 use_tensorboard = True

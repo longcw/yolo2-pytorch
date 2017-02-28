@@ -21,11 +21,11 @@ cdef yolo_to_bbox_c(
     """
     Parameters
     ----------
-    bbox_pred: (HxW, num_anchors, 4) ndarray of float (sig(tx), sig(ty), exp(tw), exp(th))
+    bbox_pred: (HxWxnum_anchors, 4) ndarray of float (sig(tx), sig(ty), exp(tw), exp(th))
     anchors: (num_anchors, 2) (pw, ph)
     Returns
     -------
-    bbox_out: (HxW, num_anchors, 4) ndarray of bbox (x1, y1, x2, y2) rescaled to (0, 1)
+    bbox_out: (HxWxnum_anchors, 4) ndarray of bbox (x1, y1, x2, y2) rescaled to (0, 1)
     """
     cdef unsigned int num_anchors = anchors.shape[0]
     cdef np.ndarray[DTYPE_t, ndim=2] bbox_out = np.zeros((H*W*num_anchors, 4), dtype=DTYPE)

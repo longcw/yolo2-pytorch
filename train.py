@@ -19,11 +19,11 @@ except ImportError:
 
 
 # data loader
-data_loader = VOCDataset(cfg.imdb_name, cfg.year, cfg.DATA_DIR, cfg.batch_size,
-                         yolo_utils.preprocess_train, processes=2, shuffle=True, dst_size=cfg.inp_size)
+imdb = VOCDataset(cfg.imdb_train, cfg.DATA_DIR, cfg.batch_size,
+                  yolo_utils.preprocess_train, processes=2, shuffle=True, dst_size=cfg.inp_size)
 print 'start'
 for step in range(cfg.max_step):
-    batch = data_loader.next_batch()
+    batch = imdb.next_batch()
 
     im = batch['images'][0]
     gt_boxes = batch['gt_boxes'][0]
@@ -42,4 +42,4 @@ for step in range(cfg.max_step):
     #
     # cv2.waitKey(20)
 
-data_loader.close()
+imdb.close()

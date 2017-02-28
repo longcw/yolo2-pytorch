@@ -15,12 +15,12 @@ from voc_eval import voc_eval
 
 
 class VOCDataset(ImageDataset):
-    def __init__(self, image_set, year, datadir, batch_size, im_processor, processes=3, shuffle=True, dst_size=None):
-        super(VOCDataset, self).__init__('voc_{}_{}'.format(year, image_set),
-                                         datadir, batch_size, im_processor, processes, shuffle, dst_size)
-        self._year = year
-        self._image_set = image_set
-        self._devkit_path = os.path.join(datadir, 'VOCdevkit{}'.format(year))
+    def __init__(self, imdb_name, datadir, batch_size, im_processor, processes=3, shuffle=True, dst_size=None):
+        super(VOCDataset, self).__init__(imdb_name, datadir, batch_size, im_processor, processes, shuffle, dst_size)
+        meta = imdb_name.split('_')
+        self._year = meta[1]
+        self._image_set = meta[2]
+        self._devkit_path = os.path.join(datadir, 'VOCdevkit{}'.format(self._year))
         self._data_path = os.path.join(self._devkit_path, 'VOC{}'.format(self._year))
         assert os.path.exists(self._devkit_path), 'VOCdevkit path does not exist: {}'.format(self._devkit_path)
         assert os.path.exists(self._data_path), 'Path does not exist: {}'.format(self._data_path)

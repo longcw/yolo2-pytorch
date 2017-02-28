@@ -14,7 +14,7 @@ import cfgs.config as cfg
 def preprocess(fname):
     # return fname
     image = cv2.imread(fname)
-    im_data = np.expand_dims(yolo_utils.preprocess_test(image, cfg.inp_size), 0)
+    im_data = np.expand_dims(yolo_utils.preprocess_test((image, None, cfg.inp_size))[0], 0)
     return image, im_data
 
 
@@ -23,13 +23,11 @@ def preprocess(fname):
 h5_fname = 'models/yolo-voc.weights.h5'
 pth_fname = 'models/yolo-voc.weights.pth'
 
-# im_path = 'demo'
-# im_path = '/media/longc/Data/data/2DMOT2015/train/zc-1/img1/'
-im_path = '/media/longc/Data/data/MOT16/train/MOT16-04/img1/'
+im_path = 'demo'
 # ---
 
 net = Darknet19()
-net_utils.load_net(h5_fname, net)
+net_utils.load_net(cfg.trained_model, net)
 # net.load_from_npz(npz_fname)
 # net_utils.save_net(h5_fname, net)
 net.cuda()
@@ -56,7 +54,7 @@ for i, (image, im_data) in enumerate(pool.imap(preprocess, im_fnames, chunksize=
 
     # print bbox_pred.shape, iou_pred.shape, prob_pred.shape
 
-    bboxes, scores, cls_inds = yolo_utils.postprocess(bbox_pred, iou_pred, prob_pred, image.shape, cfg)
+    bboxes, scores, cls_inds = yolo_utils.postprocess(bbox_pred, iou_pred, prob_pred, image.shape, cfg, cfg.thresh)
 
     im2show = yolo_utils.draw_detection(image, bboxes, scores, cls_inds, cfg)
 
@@ -66,9 +64,9 @@ for i, (image, im_data) in enumerate(pool.imap(preprocess, im_fnames, chunksize=
 
     total_time = t_total.toc()
     # wait_time = max(int(60 - total_time * 1000), 1)
-    cv2.waitKey(1)
+    cv2.waitKey(0)
 
-    if i % 10 == 0:
+    if i % 1 == 0:
         format_str = 'frame: %d, (detection: %.1f Hz, %.1f ms) (total: %.1f Hz, %.1f ms)'
         print(format_str % (
             i, 1. / det_time, det_time * 1000, 1. / total_time, total_time * 1000))

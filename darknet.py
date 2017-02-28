@@ -80,20 +80,20 @@ class Darknet19(nn.Module):
             pass
 
         # for detection
-        # bsize, c, h, w -> bsize, h, w, c -> h x w x num_anchors, 5+num_classes
+        # bsize, c, h, w -> bsize, h, w, c -> bsize, h x w, num_anchors, 5+num_classes
         bsize, _, h, w = conv5.size()
-        assert bsize == 1, 'detection only support one image per batch'
-        conv5_reshaped = conv5.permute(0, 2, 3, 1).contiguous().view(-1, cfg.num_classes + 5)
+        # assert bsize == 1, 'detection only support one image per batch'
+        conv5_reshaped = conv5.permute(0, 2, 3, 1).contiguous().view(bsize, -1, cfg.num_anchors, cfg.num_classes + 5)
 
         # tx, ty, tw, th, to -> sig(tx), sig(ty), exp(tw), exp(th), sig(to)
-        xy_pred = F.sigmoid(conv5_reshaped[:, 0:2])
-        wh_pred = torch.exp(conv5_reshaped[:, 2:4])
-        bbox_pred = torch.cat([xy_pred, wh_pred], 1)
+        xy_pred = F.sigmoid(conv5_reshaped[:, :, :, 0:2])
+        wh_pred = torch.exp(conv5_reshaped[:, :, :, 2:4])
+        bbox_pred = torch.cat([xy_pred, wh_pred], 3)
 
-        iou_pred = F.sigmoid(conv5_reshaped[:, 4:5])
+        iou_pred = F.sigmoid(conv5_reshaped[:, :, :, 4:5])
 
-        score_pred = conv5_reshaped[:, 5:]
-        prob_pred = F.softmax(score_pred)
+        score_pred = conv5_reshaped[:, :, :, 5:].contiguous()
+        prob_pred = F.softmax(score_pred.view(-1, score_pred.size()[-1])).view_as(score_pred)
 
         return bbox_pred, iou_pred, prob_pred
 

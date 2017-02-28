@@ -54,6 +54,7 @@ def preprocess_train(data):
     boxes, gt_classes = blob['boxes'], blob['gt_classes']
 
     im = cv2.imread(im_path)
+    ori_im = np.copy(im)
 
     im, trans_param = imcv2_affine_trans(im)
     scale, offs, flip = trans_param
@@ -74,14 +75,15 @@ def preprocess_train(data):
     # im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
     # im /= 255
     boxes = np.asarray(boxes, dtype=np.int)
-    return im, boxes, gt_classes, []
+    return im, boxes, gt_classes, [], ori_im
 
 
-def preprocess_test(im, inp_size):
+def preprocess_test(data):
 
-    # im, inp_size = data
+    im, _, inp_size = data
     if isinstance(im, (str, unicode)):
         im = cv2.imread(im)
+    ori_im = np.copy(im)
 
     if inp_size is not None:
         h, w = inp_size
@@ -89,31 +91,30 @@ def preprocess_test(im, inp_size):
     im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
     im = im / 255.
 
-    return im
+    return im, [], [], [], ori_im
 
 
-def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg):
+def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg, thresh=0.05):
     """
     bbox_pred: (HxWxnum_anchors, 4) ndarray of float (sig(tx), sig(ty), exp(tw), exp(th))
     iou_pred: (HxWxnum_anchors, 1)
     prob_pred: (HxWxnum_anchors, num_classes)
     """
 
-    threshold = cfg.thresh
     num_classes, num_anchors = cfg.num_classes, cfg.num_anchors
     anchors = cfg.anchors
     H, W = cfg.out_size
-    # if np.ndim(bbox_pred) != 2:
-    #     assert bbox_pred.shape[0] == 1, 'postprocess only support one image per batch'
-    #     bbox_pred = bbox_pred[0]
-    #     iou_pred = iou_pred[0]
-    #     prob_pred = prob_pred[0]
+    if np.ndim(bbox_pred) != 3:
+        assert bbox_pred.shape[0] == 1, 'postprocess only support one image per batch'
+        bbox_pred = bbox_pred[0]
+        iou_pred = iou_pred[0]
+        prob_pred = prob_pred[0]
 
+    bbox_pred = np.reshape(bbox_pred, [-1, 4])
     bbox_pred = yolo_to_bbox(
         np.ascontiguousarray(bbox_pred, dtype=np.float),
         np.ascontiguousarray(anchors, dtype=np.float),
         H, W)
-    bbox_pred = np.reshape(bbox_pred, [-1, 4])
     bbox_pred[:, 0::2] *= float(im_shape[1])
     bbox_pred[:, 1::2] *= float(im_shape[0])
     bbox_pred = bbox_pred.astype(np.int)
@@ -127,14 +128,25 @@ def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg):
     # scores = iou_pred
 
     # threshold
-    keep = np.where(scores >= threshold)
+    keep = np.where(scores >= thresh)
     bbox_pred = bbox_pred[keep]
     scores = scores[keep]
     cls_inds = cls_inds[keep]
     # print scores.shape
 
     # NMS
-    keep = nms_detections(bbox_pred, scores, 0.3)
+    keep = np.zeros(len(bbox_pred), dtype=np.int)
+    for i in range(num_classes):
+        inds = np.where(cls_inds == i)[0]
+        if len(inds) == 0:
+            continue
+        c_bboxes = bbox_pred[inds]
+        c_scores = scores[inds]
+        c_keep = nms_detections(c_bboxes, c_scores, 0.3)
+        keep[inds[c_keep]] = 1
+
+    keep = np.where(keep > 0)
+    # keep = nms_detections(bbox_pred, scores, 0.3)
     bbox_pred = bbox_pred[keep]
     scores = scores[keep]
     cls_inds = cls_inds[keep]
