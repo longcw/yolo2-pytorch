@@ -32,46 +32,64 @@ def nms_detections(pred_boxes, scores, nms_thresh):
     return keep
 
 
-def _fix(obj, dims, scale, offs):
-    for i in range(1, 5):
-        dim = dims[(i + 1) % 2]
-        off = offs[(i + 1) % 2]
-        obj[i] = int(obj[i] * scale - off)
-        obj[i] = max(min(obj[i], dim), 0)
+def _offset_boxes(boxes, im_shape, scale, offs, flip):
+    if len(boxes) == 0:
+        return boxes
+    boxes = np.asarray(boxes, dtype=np.float)
+    boxes *= scale
+    boxes[:, 0::2] -= offs[0]
+    boxes[:, 1::2] -= offs[1]
+    boxes = clip_boxes(boxes, im_shape)
+
+    if flip:
+        boxes_x = np.copy(boxes[:, 0])
+        boxes[:, 0] = im_shape[1] - boxes[:, 2]
+        boxes[:, 2] = im_shape[1] - boxes_x
+
+    return boxes
 
 
-def preprocess(im, cfg, allobj=None):
-    """
-    Takes an image, return it as a numpy tensor that is readily
-    to be fed into tfnet. If there is an accompanied annotation (allobj),
-    meaning this preprocessing is serving the train process, then this
-    image will be transformed with random noise to augment training data,
-    using scale, translation, flipping and recolor. The accompanied
-    parsed annotation (allobj) will also be modified accordingly.
-    """
+def preprocess_train(data):
+    im_path, blob, inp_size = data
+    boxes, gt_classes = blob['boxes'], blob['gt_classes']
+
+    im = cv2.imread(im_path)
+
+    im, trans_param = imcv2_affine_trans(im)
+    scale, offs, flip = trans_param
+    boxes = _offset_boxes(boxes, im.shape, scale, offs, flip)
+
+    if inp_size is not None:
+        h, w = inp_size
+        boxes[:, 0::2] *= float(w) / im.shape[1]
+        boxes[:, 1::2] *= float(h) / im.shape[0]
+        im = cv2.resize(im, (w, h))
+    im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+    im = imcv2_recolor(im)
+    # im /= 255.
+
+    # im = imcv2_recolor(im)
+    # h, w = inp_size
+    # im = cv2.resize(im, (w, h))
+    # im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+    # im /= 255
+    boxes = np.asarray(boxes, dtype=np.int)
+    return im, boxes, gt_classes, []
+
+
+def preprocess_test(im, inp_size):
+
+    # im, inp_size = data
     if isinstance(im, (str, unicode)):
         im = cv2.imread(im)
 
-    if allobj is not None:  # in training mode
-        result = imcv2_affine_trans(im)
-        im, dims, trans_param = result
-        scale, offs, flip = trans_param
-        for obj in allobj:
-            _fix(obj, dims, scale, offs)
-            if not flip:
-                continue
-            obj_1_ = obj[1]
-            obj[1] = dims[0] - obj[3]
-            obj[3] = dims[0] - obj_1_
-        im = imcv2_recolor(im)
+    if inp_size is not None:
+        h, w = inp_size
+        im = cv2.resize(im, (h, w))
+    im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+    im = im / 255.
 
-    h, w = cfg.inp_size
-    imsz = cv2.resize(im, (h, w))
-    # imsz = imsz[:, :, ::-1]
-    imsz = cv2.cvtColor(imsz, cv2.COLOR_BGR2RGB)
-    imsz = imsz / 255.
-
-    return imsz
+    return im
 
 
 def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg):

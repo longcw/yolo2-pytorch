@@ -14,15 +14,18 @@ import cfgs.config as cfg
 def preprocess(fname):
     # return fname
     image = cv2.imread(fname)
-    im_data = np.expand_dims(yolo_utils.preprocess(image, cfg), 0)
+    im_data = np.expand_dims(yolo_utils.preprocess_test(image, cfg.inp_size), 0)
     return image, im_data
 
 
 # hyper-parameters
 # npz_fname = 'models/yolo-voc.weights.npz'
 h5_fname = 'models/yolo-voc.weights.h5'
+pth_fname = 'models/yolo-voc.weights.pth'
 
-im_path = 'demo'
+# im_path = 'demo'
+# im_path = '/media/longc/Data/data/2DMOT2015/train/zc-1/img1/'
+im_path = '/media/longc/Data/data/MOT16/train/MOT16-04/img1/'
 # ---
 
 net = Darknet19()
@@ -38,7 +41,7 @@ t_total = Timer()
 # im_fnames = ['person.jpg']
 im_fnames = sorted((fname for fname in os.listdir(im_path) if os.path.splitext(fname)[-1] == '.jpg'))
 im_fnames = (os.path.join(im_path, fname) for fname in im_fnames)
-pool = Pool(processes=5)
+pool = Pool(processes=1)
 
 for i, (image, im_data) in enumerate(pool.imap(preprocess, im_fnames, chunksize=1)):
     t_total.tic()
@@ -63,9 +66,9 @@ for i, (image, im_data) in enumerate(pool.imap(preprocess, im_fnames, chunksize=
 
     total_time = t_total.toc()
     # wait_time = max(int(60 - total_time * 1000), 1)
-    cv2.waitKey(0)
+    cv2.waitKey(1)
 
-    if i % 1 == 0:
+    if i % 10 == 0:
         format_str = 'frame: %d, (detection: %.1f Hz, %.1f ms) (total: %.1f Hz, %.1f ms)'
         print(format_str % (
             i, 1. / det_time, det_time * 1000, 1. / total_time, total_time * 1000))

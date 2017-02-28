@@ -19,14 +19,27 @@ except ImportError:
 
 
 # data loader
-data_loader = VOCDataset(cfg.imdb_name, cfg.year, cfg.DATA_DIR, cfg.batch_size, processes=10, shuffle=True)
+data_loader = VOCDataset(cfg.imdb_name, cfg.year, cfg.DATA_DIR, cfg.batch_size,
+                         yolo_utils.preprocess_train, processes=2, shuffle=True, dst_size=cfg.inp_size)
 print 'start'
 for step in range(cfg.max_step):
     batch = data_loader.next_batch()
-    print batch['images'][0].shape
+
+    im = batch['images'][0]
+    gt_boxes = batch['gt_boxes'][0]
+    cls_inds = batch['gt_classes'][0]
+    print gt_boxes
+    im2show = yolo_utils.draw_detection(im, gt_boxes, np.ones(len(cls_inds)), cls_inds, cfg)
+
+    cv2.imshow('train', im2show)
+    cv2.waitKey(1)
+
+    # print batch['gt_boxes']
+    # print batch['gt_classes']
+    # print batch['images'][0].shape
     # print step
     # cv2.imshow('test', batch['images'][0])
     #
-    # cv2.waitKey(0)
+    # cv2.waitKey(20)
 
 data_loader.close()

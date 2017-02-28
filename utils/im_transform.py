@@ -3,17 +3,20 @@ import cv2
 
 
 def imcv2_recolor(im, a=.1):
-    t = [np.random.uniform()]
-    t += [np.random.uniform()]
-    t += [np.random.uniform()]
-    t = np.array(t) * 2. - 1.
+    # t = [np.random.uniform()]
+    # t += [np.random.uniform()]
+    # t += [np.random.uniform()]
+    # t = np.array(t) * 2. - 1.
+    t = np.random.uniform(-1, 1, 3)
 
     # random amplify each channel
-    im = im * (1 + t * a)
+    im = im.astype(np.float)
+    im *= (1 + t * a)
     mx = 255. * (1 + a)
-    up = np.random.uniform() * 2 - 1
+    up = np.random.uniform(-1, 1)
     im = np.power(im / mx, 1. + up * .5)
-    return np.array(im * 255., np.uint8)
+    # return np.array(im * 255., np.uint8)
+    return im
 
 
 def imcv2_affine_trans(im):
@@ -27,6 +30,8 @@ def imcv2_affine_trans(im):
 
     im = cv2.resize(im, (0, 0), fx=scale, fy=scale)
     im = im[offy: (offy + h), offx: (offx + w)]
-    flip = np.random.binomial(1, .5)
-    if flip: im = cv2.flip(im, 1)
-    return im, [w, h, c], [scale, [offx, offy], flip]
+    flip = np.random.uniform() > 0.5
+    if flip:
+        im = cv2.flip(im, 1)
+
+    return im, [scale, [offx, offy], flip]

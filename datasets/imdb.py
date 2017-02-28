@@ -1,8 +1,7 @@
 import os
 import PIL
 import numpy as np
-from torch.multiprocessing import Pool
-from torchvision import transforms
+from multiprocessing import Pool
 
 
 def mkdir(path, max_depth=3):
@@ -15,10 +14,12 @@ def mkdir(path, max_depth=3):
 
 
 class ImageDataset(object):
-    def __init__(self, name, datadir, batch_size, processes=3, shuffle=True):
+    def __init__(self, name, datadir, batch_size, im_processor, processes=3, shuffle=True, dst_size=None):
         self._name = name
         self._data_dir = datadir
         self._batch_size = batch_size
+        self.dst_size = dst_size
+
         self._epoch = 0
         self._num_classes = 0
         self._classes = []
@@ -35,25 +36,25 @@ class ImageDataset(object):
         self._pool_processes = processes
         self.pool = Pool(self._pool_processes)
         self.gen = None
-        self.im_processor = None
+        self._im_processor = im_processor
 
     def next_batch(self):
-        batch = {'images': [], 'gt_boxes': [], 'classes': [], 'dontcare': []}
+        batch = {'images': [], 'gt_boxes': [], 'gt_classes': [], 'dontcare': []}
         i = 0
         while i < self.batch_size:
             try:
                 images, gt_boxes, classes, dontcare = self.gen.next()
                 batch['images'].append(images)
                 batch['gt_boxes'].append(gt_boxes)
-                batch['classes'].append(classes)
+                batch['gt_classes'].append(classes)
                 batch['dontcare'].append(dontcare)
                 i += 1
             except (StopIteration, AttributeError):
                 indexes = np.arange(len(self.image_names), dtype=np.int)
                 if self._shuffle:
                     np.random.shuffle(indexes)
-                self.gen = self.pool.imap(self.im_processor,
-                                          ([self.image_names[i], self.annotations[i]] for i in indexes),
+                self.gen = self.pool.imap(self._im_processor,
+                                          ([self.image_names[i], self.annotations[i], self.dst_size] for i in indexes),
                                           chunksize=self.batch_size)
                 self._epoch += 1
         batch['images'] = np.asarray(batch['images'])

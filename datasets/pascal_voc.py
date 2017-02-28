@@ -7,21 +7,17 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import scipy.sparse
 
-from functools import partial
+# from functools import partial
 
 from imdb import ImageDataset
 from voc_eval import voc_eval
-
-
-def process_im(data):
-    im_path, blob = data
-    image = cv2.imread(im_path)
-    return image, blob['boxes'], blob['gt_classes'], []
+# from utils.yolo import preprocess_train
 
 
 class VOCDataset(ImageDataset):
-    def __init__(self, image_set, year, datadir, batch_size, processes=3, shuffle=True):
-        super(VOCDataset, self).__init__('voc_{}_{}'.format(year, image_set), datadir, batch_size, processes, shuffle)
+    def __init__(self, image_set, year, datadir, batch_size, im_processor, processes=3, shuffle=True, dst_size=None):
+        super(VOCDataset, self).__init__('voc_{}_{}'.format(year, image_set),
+                                         datadir, batch_size, im_processor, processes, shuffle, dst_size)
         self._year = year
         self._image_set = image_set
         self._devkit_path = os.path.join(datadir, 'VOCdevkit{}'.format(year))
@@ -46,7 +42,7 @@ class VOCDataset(ImageDataset):
 
         self.load_dataset()
         # self.im_processor = partial(process_im, image_names=self._image_names, annotations=self._annotations)
-        self.im_processor = process_im
+        # self.im_processor = preprocess_train
 
     def load_dataset(self):
         # set self._image_index and self._annotations
