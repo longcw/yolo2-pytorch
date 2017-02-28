@@ -8,7 +8,7 @@ from darknet import Darknet19
 import utils.yolo as yolo_utils
 import utils.network as net_utils
 from utils.timer import Timer
-import cfgs.config_voc as cfg
+import cfgs.config as cfg
 
 
 def preprocess(fname):
@@ -25,7 +25,7 @@ h5_fname = 'models/yolo-voc.weights.h5'
 im_path = 'demo'
 # ---
 
-net = Darknet19(cfg=cfg)
+net = Darknet19()
 net_utils.load_net(h5_fname, net)
 # net.load_from_npz(npz_fname)
 # net_utils.save_net(h5_fname, net)
@@ -62,6 +62,7 @@ for i, (image, im_data) in enumerate(pool.imap(preprocess, im_fnames, chunksize=
     cv2.imshow('test', im2show)
 
     total_time = t_total.toc()
+    # wait_time = max(int(60 - total_time * 1000), 1)
     cv2.waitKey(0)
 
     if i % 1 == 0:

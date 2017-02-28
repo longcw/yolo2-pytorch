@@ -98,3 +98,4 @@ ENV/
 
 *.o
 models/*
+data/*

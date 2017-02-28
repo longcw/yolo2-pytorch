@@ -3,7 +3,7 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 import utils.network as net_utils
-
+import cfgs.config as cfg
 from layers.reorg.reorg_layer import ReorgLayer
 
 
@@ -28,9 +28,8 @@ def _make_layers(in_channels, net_cfg):
 
 
 class Darknet19(nn.Module):
-    def __init__(self, cfg):
+    def __init__(self):
         super(Darknet19, self).__init__()
-        self.cfg = cfg
 
         net_cfgs = [
             # conv1s
@@ -84,7 +83,7 @@ class Darknet19(nn.Module):
         # bsize, c, h, w -> bsize, h, w, c -> h x w x num_anchors, 5+num_classes
         bsize, _, h, w = conv5.size()
         assert bsize == 1, 'detection only support one image per batch'
-        conv5_reshaped = conv5.permute(0, 2, 3, 1).contiguous().view(-1, self.cfg.num_classes + 5)
+        conv5_reshaped = conv5.permute(0, 2, 3, 1).contiguous().view(-1, cfg.num_classes + 5)
 
         # tx, ty, tw, th, to -> sig(tx), sig(ty), exp(tw), exp(th), sig(to)
         xy_pred = F.sigmoid(conv5_reshaped[:, 0:2])
@@ -98,26 +97,30 @@ class Darknet19(nn.Module):
 
         return bbox_pred, iou_pred, prob_pred
 
-    def load_from_npz(self, fname):
+    def load_from_npz(self, fname, num_conv=None):
         dest_src = {'conv.weight': 'kernel', 'conv.bias': 'biases',
                     'bn.weight': 'gamma', 'bn.bias': 'biases',
                     'bn.running_mean': 'moving_mean', 'bn.running_var': 'moving_variance'}
         params = np.load(fname)
         own_dict = self.state_dict()
         keys = own_dict.keys()
+
         for i, start in enumerate(range(0, len(keys), 5)):
+            if num_conv is not None and i>= num_conv:
+                break
             end = min(start+5, len(keys))
             for key in keys[start:end]:
                 list_key = key.split('.')
                 ptype = dest_src['{}.{}'.format(list_key[-2], list_key[-1])]
                 src_key = '{}-convolutional/{}:0'.format(i, ptype)
-                # print own_dict[key].size(), params[src_key].shape
+                print(src_key, own_dict[key].size(), params[src_key].shape)
                 param = torch.from_numpy(params[src_key])
                 if ptype == 'kernel':
                     param = param.permute(3, 2, 0, 1)
                 own_dict[key].copy_(param)
 
-# if __name__ == '__main__':
-#     net = Darknet19()
-#     net.load_from_npz('models/yolo-voc.weights.npz')
+if __name__ == '__main__':
+    net = Darknet19()
+    # net.load_from_npz('models/yolo-voc.weights.npz')
+    net.load_from_npz('models/darknet19.weights.npz', num_conv=18)
 
