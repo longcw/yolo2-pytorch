@@ -110,6 +110,95 @@ cdef np.ndarray[DTYPE_t, ndim=2] bbox_intersections_c(
     return intersec
 
 
+def bbox_ious(
+        np.ndarray[DTYPE_t, ndim=2] boxes,
+        np.ndarray[DTYPE_t, ndim=2] query_boxes):
+    return bbox_intersections_c(boxes, query_boxes)
+
+
+cdef np.ndarray[DTYPE_t, ndim=2] bbox_ious_c(
+        np.ndarray[DTYPE_t, ndim=2] boxes,
+        np.ndarray[DTYPE_t, ndim=2] query_boxes):
+    """
+    For each query box compute the IOU covered by boxes
+    ----------
+    Parameters
+    ----------
+    boxes: (N, 4) ndarray of float
+    query_boxes: (K, 4) ndarray of float
+    Returns
+    -------
+    overlaps: (N, K) ndarray of intersec between boxes and query_boxes
+    """
+    cdef unsigned int N = boxes.shape[0]
+    cdef unsigned int K = query_boxes.shape[0]
+    cdef np.ndarray[DTYPE_t, ndim=2] intersec = np.zeros((N, K), dtype=DTYPE)
+    cdef DTYPE_t iw, ih, qbox_area, box_area, inter_area
+    cdef unsigned int k, n
+    for k in range(K):
+        qbox_area = (
+            (query_boxes[k, 2] - query_boxes[k, 0] + 1) *
+            (query_boxes[k, 3] - query_boxes[k, 1] + 1)
+        )
+        for n in range(N):
+            iw = (
+                min(boxes[n, 2], query_boxes[k, 2]) -
+                max(boxes[n, 0], query_boxes[k, 0]) + 1
+            )
+            if iw > 0:
+                ih = (
+                    min(boxes[n, 3], query_boxes[k, 3]) -
+                    max(boxes[n, 1], query_boxes[k, 1]) + 1
+                )
+                if ih > 0:
+                    box_area = (
+                        (boxes[k, 2] - boxes[k, 0] + 1) *
+                        (boxes[k, 3] - boxes[k, 1] + 1)
+                    )
+                    inter_area = iw * ih
+                    intersec[n, k] = inter_area / (qbox_area + box_area - inter_area)
+    return intersec
+
+
+def anchor_intersections(
+        np.ndarray[DTYPE_t, ndim=2] anchors,
+        np.ndarray[DTYPE_t, ndim=2] query_boxes):
+    return anchor_intersections_c(anchors, query_boxes)
+
+
+cdef np.ndarray[DTYPE_t, ndim=2] anchor_intersections_c(
+        np.ndarray[DTYPE_t, ndim=2] anchors,
+        np.ndarray[DTYPE_t, ndim=2] query_boxes):
+    """
+    For each query box compute the intersection ratio covered by anchors
+    ----------
+    Parameters
+    ----------
+    boxes: (N, 2) ndarray of float
+    query_boxes: (K, 4) ndarray of float
+    Returns
+    -------
+    overlaps: (N, K) ndarray of intersec between boxes and query_boxes
+    """
+    cdef unsigned int N = anchors.shape[0]
+    cdef unsigned int K = query_boxes.shape[0]
+    cdef np.ndarray[DTYPE_t, ndim=2] intersec = np.zeros((N, K), dtype=DTYPE)
+    cdef DTYPE_t iw, ih, anchor_area, inter_area
+    cdef DTYPE_t boxw, boxh
+    cdef unsigned int k, n
+    for n in range(N):
+        anchor_area = anchors[n, 0] * anchors[n, 1]
+        for k in range(K):
+            boxw = (query_boxes[k, 2] - query_boxes[k, 0] + 1)
+            boxh = (query_boxes[k, 3] - query_boxes[k, 1] + 1)
+            iw = min(anchors[n, 0], boxw)
+            ih = min(anchors[n, 1], boxh)
+            inter_area = iw * ih
+            intersec[n, k] = inter_area / (anchor_area + boxw * boxh - inter_area)
+
+    return intersec
+
+
 def bbox_intersections_self(
         np.ndarray[DTYPE_t, ndim=2] boxes):
     return bbox_intersections_self_c(boxes)

@@ -5,6 +5,7 @@ from im_transform import imcv2_affine_trans, imcv2_recolor
 # from box import BoundBox, box_iou, prob_compare
 from utils.nms_wrapper import nms
 from utils.cython_yolo import yolo_to_bbox
+from utils.cython_bbox import anchor_intersections
 
 
 def clip_boxes(boxes, im_shape):
@@ -155,6 +156,43 @@ def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg, thresh=0.05):
     bbox_pred = clip_boxes(bbox_pred, im_shape)
 
     return bbox_pred, scores, cls_inds
+
+
+def _bbox_target_perimage(im_shape, gt_boxes, dontcare_areas, cfg):
+    num_classes, num_anchors = cfg.num_classes, cfg.num_anchors
+    anchors = cfg.anchors
+    H, W = cfg.out_size
+    gt_boxes = np.asarray(gt_boxes, dtype=np.float)
+    gt_boxes = np.copy(gt_boxes)
+    # TODO: dontcare areas
+    dontcare_areas = np.asarray(dontcare_areas, dtype=np.float)
+
+    # locate the cell of each gt_boxe
+    cell_w = float(im_shape[1]) / W
+    cell_h = float(im_shape[0]) / H
+    cx = (gt_boxes[:, 0] + gt_boxes[:, 2]) * 0.5 / cell_w
+    cy = (gt_boxes[:, 1] + gt_boxes[:, 3]) * 0.5 / cell_h
+    cell_inds = np.floor(cy) * W + np.floor(cx)
+    cell_inds = cell_inds.astype(np.int)
+
+    # cx, cy, tw, th
+    gt_boxes[:, 0] = cx - np.floor(cx)
+    gt_boxes[:, 1] = cy - np.floor(cy)
+    gt_boxes[:, 2] = (gt_boxes[:, 2] - gt_boxes[:, 0]) / im_shape[1]
+    gt_boxes[:, 3] = (gt_boxes[:, 3] - gt_boxes[:, 1]) / im_shape[0]
+
+    bbox_target = [[]] * (H * W)
+    for i, ind in enumerate(cell_inds):
+        bbox_target[ind].append(gt_boxes[i])
+
+    return bbox_target
+
+
+def get_bbox_target(images, gt_boxes, dontcares, cfg):
+    bbox_targets = []
+    for i, im in enumerate(images):
+        bbox_targets.append(_bbox_target_perimage(im.shape, gt_boxes[i], dontcares[i], cfg))
+    return bbox_targets
 
 
 def draw_detection(im, bboxes, scores, cls_inds, cfg):

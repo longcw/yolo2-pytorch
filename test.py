@@ -26,7 +26,7 @@ trained_model = cfg.trained_model
 output_dir = cfg.test_output_dir
 
 max_per_image = 300
-thresh = 0.05
+thresh = 0.01
 vis = False
 # ------------
 

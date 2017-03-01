@@ -32,8 +32,7 @@ and set the model path in `demo.py`
 
 ### Evaluation
 Follow [this project (TFFRCNN)](https://github.com/CharlesShang/TFFRCNN)
-to download and prepare the training, validation, test data 
-and the VGG16 model pre-trained on ImageNet. 
+to download and prepare the training, validation, test data. 
 
 Since the program loading the data in `yolo2-pytorch/data` by default,
 you can set the data path as following.
@@ -67,5 +66,5 @@ coordinates in one of the cells during training and
 testing while RPN associates predicted ROIs with 
 ground-truth boxes without any limitation. **Is is enough 
 to make a region proposal method become a detector? 
-Or I have ignored some important things.
+Or I have missed something important.
 Welcome to discuss with me.**

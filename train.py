@@ -28,6 +28,10 @@ for step in range(cfg.max_step):
     im = batch['images'][0]
     gt_boxes = batch['gt_boxes'][0]
     cls_inds = batch['gt_classes'][0]
+    orgin_im = batch['origin_im'][0]
+
+    yolo_utils.anchor_target_one_image(im.shape, gt_boxes, batch['dontcare'], cfg)
+
     print gt_boxes
     im2show = yolo_utils.draw_detection(im, gt_boxes, np.ones(len(cls_inds)), cls_inds, cfg)
 
