@@ -20,7 +20,7 @@ class ImageDataset(object):
         self._batch_size = batch_size
         self.dst_size = dst_size
 
-        self._epoch = 0
+        self._epoch = -1
         self._num_classes = 0
         self._classes = []
 
@@ -58,6 +58,7 @@ class ImageDataset(object):
                                           ([self.image_names[i], self.get_annotation(i), self.dst_size] for i in indexes),
                                           chunksize=self.batch_size)
                 self._epoch += 1
+                print('epoch {} start...'.format(self._epoch))
         batch['images'] = np.asarray(batch['images'])
 
         return batch

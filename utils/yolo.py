@@ -5,7 +5,6 @@ from im_transform import imcv2_affine_trans, imcv2_recolor
 # from box import BoundBox, box_iou, prob_compare
 from utils.nms_wrapper import nms
 from utils.cython_yolo import yolo_to_bbox
-from utils.cython_bbox import anchor_intersections
 
 
 def clip_boxes(boxes, im_shape):
@@ -62,7 +61,7 @@ def preprocess_train(data):
     boxes = _offset_boxes(boxes, im.shape, scale, offs, flip)
 
     if inp_size is not None:
-        h, w = inp_size
+        w, h = inp_size
         boxes[:, 0::2] *= float(w) / im.shape[1]
         boxes[:, 1::2] *= float(h) / im.shape[0]
         im = cv2.resize(im, (w, h))
@@ -87,7 +86,7 @@ def preprocess_test(data):
     ori_im = np.copy(im)
 
     if inp_size is not None:
-        h, w = inp_size
+        w, h = inp_size
         im = cv2.resize(im, (h, w))
     im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
     im = im / 255.
@@ -97,25 +96,21 @@ def preprocess_test(data):
 
 def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg, thresh=0.05):
     """
-    bbox_pred: (HxWxnum_anchors, 4) ndarray of float (sig(tx), sig(ty), exp(tw), exp(th))
-    iou_pred: (HxWxnum_anchors, 1)
-    prob_pred: (HxWxnum_anchors, num_classes)
+    bbox_pred: (bsize, HxW, num_anchors, 4) ndarray of float (sig(tx), sig(ty), exp(tw), exp(th))
+    iou_pred: (bsize, HxW, num_anchors, 1)
+    prob_pred: (bsize, HxW, num_anchors, num_classes)
     """
 
     num_classes, num_anchors = cfg.num_classes, cfg.num_anchors
     anchors = cfg.anchors
-    H, W = cfg.out_size
-    if np.ndim(bbox_pred) != 3:
-        assert bbox_pred.shape[0] == 1, 'postprocess only support one image per batch'
-        bbox_pred = bbox_pred[0]
-        iou_pred = iou_pred[0]
-        prob_pred = prob_pred[0]
+    W, H = cfg.out_size
+    assert bbox_pred.shape[0] == 1, 'postprocess only support one image per batch'
 
-    bbox_pred = np.reshape(bbox_pred, [-1, 4])
     bbox_pred = yolo_to_bbox(
         np.ascontiguousarray(bbox_pred, dtype=np.float),
         np.ascontiguousarray(anchors, dtype=np.float),
         H, W)
+    bbox_pred = np.reshape(bbox_pred, [-1, 4])
     bbox_pred[:, 0::2] *= float(im_shape[1])
     bbox_pred[:, 1::2] *= float(im_shape[0])
     bbox_pred = bbox_pred.astype(np.int)
@@ -158,12 +153,11 @@ def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg, thresh=0.05):
     return bbox_pred, scores, cls_inds
 
 
-def _bbox_target_perimage(im_shape, gt_boxes, dontcare_areas, cfg):
-    num_classes, num_anchors = cfg.num_classes, cfg.num_anchors
-    anchors = cfg.anchors
+def _bbox_targets_perimage(im_shape, gt_boxes, cls_inds, dontcare_areas, cfg):
+    # num_classes, num_anchors = cfg.num_classes, cfg.num_anchors
+    # anchors = cfg.anchors
     H, W = cfg.out_size
     gt_boxes = np.asarray(gt_boxes, dtype=np.float)
-    gt_boxes = np.copy(gt_boxes)
     # TODO: dontcare areas
     dontcare_areas = np.asarray(dontcare_areas, dtype=np.float)
 
@@ -175,24 +169,30 @@ def _bbox_target_perimage(im_shape, gt_boxes, dontcare_areas, cfg):
     cell_inds = np.floor(cy) * W + np.floor(cx)
     cell_inds = cell_inds.astype(np.int)
 
-    # cx, cy, tw, th
-    gt_boxes[:, 0] = cx - np.floor(cx)
-    gt_boxes[:, 1] = cy - np.floor(cy)
-    gt_boxes[:, 2] = (gt_boxes[:, 2] - gt_boxes[:, 0]) / im_shape[1]
-    gt_boxes[:, 3] = (gt_boxes[:, 3] - gt_boxes[:, 1]) / im_shape[0]
+    # [x1, y1, x2, y2],  [class]
+    # gt_boxes[:, 0::2] /= im_shape[1]
+    # gt_boxes[:, 1::2] /= im_shape[0]
+    # gt_boxes[:, 0] = cx - np.floor(cx)
+    # gt_boxes[:, 1] = cy - np.floor(cy)
+    # gt_boxes[:, 2] = (gt_boxes[:, 2] - gt_boxes[:, 0]) / im_shape[1]
+    # gt_boxes[:, 3] = (gt_boxes[:, 3] - gt_boxes[:, 1]) / im_shape[0]
 
-    bbox_target = [[]] * (H * W)
+    bbox_target = [[] for _ in range(H*W)]
+    cls_target = [[] for _ in range(H*W)]
     for i, ind in enumerate(cell_inds):
         bbox_target[ind].append(gt_boxes[i])
+        cls_target[ind].append(cls_inds[i])
+    return bbox_target, cls_target
 
-    return bbox_target
 
-
-def get_bbox_target(images, gt_boxes, dontcares, cfg):
+def get_bbox_targets(images, gt_boxes, cls_inds, dontcares, cfg):
     bbox_targets = []
+    cls_targets = []
     for i, im in enumerate(images):
-        bbox_targets.append(_bbox_target_perimage(im.shape, gt_boxes[i], dontcares[i], cfg))
-    return bbox_targets
+        bbox_target, cls_target = _bbox_targets_perimage(im.shape, gt_boxes[i], cls_inds[i], dontcares[i], cfg)
+        bbox_targets.append(bbox_target)
+        cls_targets.append(cls_target)
+    return bbox_targets, cls_targets
 
 
 def draw_detection(im, bboxes, scores, cls_inds, cfg):

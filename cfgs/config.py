@@ -14,7 +14,7 @@ def mkdir(path, max_depth=3):
 
 # input and output size
 ############################
-inp_size = np.array([416, 416], dtype=np.int)
+inp_size = np.array([416, 416], dtype=np.int)   # w, h
 out_size = inp_size / 32
 
 
@@ -53,7 +53,5 @@ mkdir(train_output_dir, max_depth=3)
 mkdir(test_output_dir, max_depth=4)
 
 rand_seed = 1024
-use_tensorboard = True
+use_tensorboard = False
 
-max_epoch = 10
-max_step = 1000
