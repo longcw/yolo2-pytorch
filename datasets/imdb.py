@@ -64,7 +64,7 @@ class ImageDataset(object):
         return batch
 
     def close(self):
-        self.pool.close()
+        self.pool.terminate()
         self.pool.join()
         self.gen = None
 

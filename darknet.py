@@ -65,7 +65,13 @@ class Darknet19(nn.Module):
         self.conv5 = net_utils.Conv2d(c4, out_channels, 1, 1, relu=False)
 
         # train
-        self.loss = None
+        self.bbox_loss = None
+        self.iou_loss = None
+        self.cls_loss = None
+
+    @property
+    def loss(self):
+        return self.bbox_loss * 5 + self.iou_loss + self.cls_loss
 
     def forward(self, im_data, gt_boxes=None, gt_classes=None, dontcare=None):
         conv1s = self.conv1s(im_data)
@@ -104,23 +110,23 @@ class Darknet19(nn.Module):
             _ious = net_utils.np_to_variable(_ious)
             _classes = net_utils.np_to_variable(_classes)
             _mask = net_utils.np_to_variable(_mask, dtype=torch.FloatTensor)
-            num_boxes = torch.sum(_mask)
+            num_boxes = _mask.data.sum()
 
             bbox_mask = _mask.expand_as(_boxes)
-            bbox_loss = F.smooth_l1_loss(bbox_mask * bbox_pred, bbox_mask * _boxes,
+            self.bbox_loss = F.smooth_l1_loss(bbox_mask * bbox_pred, bbox_mask * _boxes,
                                          size_average=False) / num_boxes
 
-            iou_loss = nn.MSELoss()(iou_pred, _ious)
+            iou_mask = _mask * (iou_pred.data.numel() / num_boxes)
+            self.iou_loss = nn.L1Loss()(iou_pred * iou_mask, _ious * iou_mask)
 
             cls_mask = _mask.expand_as(score_pred)
-            cls_loss = nn.MSELoss(size_average=True)(prob_pred * cls_mask, _classes * cls_mask) / num_boxes
+            self.cls_loss = nn.L1Loss(size_average=False)(prob_pred * cls_mask, _classes * cls_mask) / num_boxes
             # cls_loss = F.cross_entropy(score_pred.view(-1, score_pred.size()[-1]), _classes.view(-1))
 
             # print prob_pred.size(), _classes.size(), _mask.size()
             # cls_loss = nn.MSELoss()(prob_pred * _mask, _classes * _mask)
             # print num_boxes
             # print bbox_loss, iou_loss, cls_loss
-            self.loss = 5. * bbox_loss + iou_loss + cls_loss
 
         return bbox_pred, iou_pred, prob_pred
 
@@ -173,6 +179,10 @@ class Darknet19(nn.Module):
 
             cell_boxes = [[] for _ in range(hw)]
             for i, ind in enumerate(cell_inds):
+                # print ind
+                if ind >= hw or ind < 0:
+                    print ind
+                    continue
                 cell_boxes[ind].append(i)
 
             for i in range(hw):
@@ -180,7 +190,7 @@ class Darknet19(nn.Module):
                     continue
                 bboxes = [gt_boxes_b[j] for j in cell_boxes[i]]
                 targets_b = np.array([target_boxes[j] for j in cell_boxes[i]], dtype=np.float)
-                # targets_c = np.array([gt_classes[j] for j in cell_boxes[i]], dtype=np.int)
+                targets_c = np.array([gt_classes[b][j] for j in cell_boxes[i]], dtype=np.int)
 
                 ious = bbox_ious(
                     np.ascontiguousarray(bbox_np[b, i], dtype=np.float),
@@ -196,7 +206,7 @@ class Darknet19(nn.Module):
                         _boxes[b, i, a, :] = targets_b[j]
                         # print bbox_pred_np[b, i, a], targets_b[j]
                         # _classes[b, i, a, :] = targets_c[j]
-                        _classes[b, i, a, gt_classes[b][j]] = 1
+                        _classes[b, i, a, targets_c[j]] = 1
 
             # _boxes[:, :, :, 2:4] /= anchors
 

@@ -20,14 +20,15 @@ def preprocess(fname):
 
 # hyper-parameters
 # npz_fname = 'models/yolo-voc.weights.npz'
-h5_fname = 'models/yolo-voc.weights.h5'
-pth_fname = 'models/yolo-voc.weights.pth'
-
+# h5_fname = 'models/yolo-voc.weights.h5'
+trained_model = cfg.trained_model
+# trained_model = os.path.join(cfg.train_output_dir, 'darknet19_voc07trainval_exp1_63.h5')
+thresh = cfg.thresh
 im_path = 'demo'
 # ---
 
 net = Darknet19()
-net_utils.load_net(cfg.trained_model, net)
+net_utils.load_net(trained_model, net)
 # net.load_from_npz(npz_fname)
 # net_utils.save_net(h5_fname, net)
 net.cuda()
@@ -54,7 +55,7 @@ for i, (image, im_data) in enumerate(pool.imap(preprocess, im_fnames, chunksize=
 
     # print bbox_pred.shape, iou_pred.shape, prob_pred.shape
 
-    bboxes, scores, cls_inds = yolo_utils.postprocess(bbox_pred, iou_pred, prob_pred, image.shape, cfg, cfg.thresh)
+    bboxes, scores, cls_inds = yolo_utils.postprocess(bbox_pred, iou_pred, prob_pred, image.shape, cfg, thresh)
 
     im2show = yolo_utils.draw_detection(image, bboxes, scores, cls_inds, cfg)
 
