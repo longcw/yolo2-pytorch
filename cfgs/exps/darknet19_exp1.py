@@ -1,4 +1,4 @@
-exp_name = 'darknet19_voc07trainval_exp1'
+exp_name = 'darknet19_voc07trainval_exp3'
 
 pretrained_fname = 'darknet19.weights.npz'
 

@@ -71,7 +71,7 @@ class Darknet19(nn.Module):
 
     @property
     def loss(self):
-        return self.bbox_loss * 5 + self.iou_loss + self.cls_loss
+        return self.bbox_loss + self.iou_loss + self.cls_loss
 
     def forward(self, im_data, gt_boxes=None, gt_classes=None, dontcare=None):
         conv1s = self.conv1s(im_data)
@@ -114,9 +114,10 @@ class Darknet19(nn.Module):
 
             bbox_mask = _mask.expand_as(_boxes)
             self.bbox_loss = F.smooth_l1_loss(bbox_mask * bbox_pred, bbox_mask * _boxes,
-                                         size_average=False) / num_boxes
+                                              size_average=False) / num_boxes
 
-            iou_mask = _mask * (iou_pred.data.numel() / num_boxes)
+            iou_mask = _mask * (iou_pred.data.numel() / num_boxes) + \
+                       net_utils.np_to_variable(np.ones(_mask.size(), dtype=np.float))
             self.iou_loss = nn.L1Loss()(iou_pred * iou_mask, _ious * iou_mask)
 
             cls_mask = _mask.expand_as(score_pred)
@@ -201,7 +202,8 @@ class Darknet19(nn.Module):
                 for j, a in enumerate(argmax):
                     if _ious[b, i, a, 0] <= ious[a, j]:
                         _mask[b, i, a, :] = 1
-                        _ious[b, i, a, 0] = ious[a, j]
+                        _ious[b, i, a, 0] = 1.
+                        # _ious[b, i, a, 0] = ious[a, j]
                         targets_b[j, 2:4] /= anchors[a]
                         _boxes[b, i, a, :] = targets_b[j]
                         # print bbox_pred_np[b, i, a], targets_b[j]

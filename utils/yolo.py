@@ -120,8 +120,8 @@ def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg, thresh=0.05):
 
     cls_inds = np.argmax(prob_pred, axis=1)
     prob_pred = prob_pred[(np.arange(prob_pred.shape[0]), cls_inds)]
-    # scores = iou_pred * prob_pred
-    scores = iou_pred
+    scores = iou_pred * prob_pred
+    # scores = iou_pred
 
     # threshold
     keep = np.where(scores >= thresh)

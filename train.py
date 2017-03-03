@@ -41,7 +41,7 @@ optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=cfg.momentum, weig
 # tensorboad
 use_tensorboard = cfg.use_tensorboard and CrayonClient is not None
 # use_tensorboard = False
-remove_all_log = True
+remove_all_log = False
 if use_tensorboard:
     cc = CrayonClient(hostname='127.0.0.1')
     if remove_all_log:
