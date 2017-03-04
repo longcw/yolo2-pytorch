@@ -14,6 +14,13 @@ Testing an image in VOC2007 costs about 13~20ms.
 
 **TODO:** Build the loss function for training.
 
+I can not train the network well so far. 
+Maybe you can implement the loss function by yourself and make 
+the training program work.
+You can download the model of darknet19 pretrained on ImageNet 
+by the author in [darknet19.weights.npz](https://drive.google.com/file/d/0B4pXCfnYmG1WRG52enNpcV80aDg/view?usp=sharing)
+and load it by `net.load_from_npz(cfg.pretrained_model, num_conv=18)`.
+
 ### Installation and demo
 1. Clone this repository
     ```bash
