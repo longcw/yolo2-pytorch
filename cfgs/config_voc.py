@@ -21,22 +21,3 @@ imdb_test = 'voc_2007_test'
 batch_size = 1
 train_batch_size = 16
 
-
-
-#
-# bias_match = 1
-#
-# coords = 4
-#
-# softmax = 1
-# jitter = .2
-# rescore = 1
-#
-# object_scale = 5
-# noobject_scale = 1
-# class_scale = 1
-# coord_scale = 1
-#
-# absolute = 1
-
-# random = 0

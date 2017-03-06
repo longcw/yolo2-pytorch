@@ -160,43 +160,43 @@ cdef np.ndarray[DTYPE_t, ndim=2] bbox_ious_c(
     return intersec
 
 
-# def anchor_intersections(
-#         np.ndarray[DTYPE_t, ndim=2] anchors,
-#         np.ndarray[DTYPE_t, ndim=2] query_boxes):
-#     return anchor_intersections_c(anchors, query_boxes)
-#
-#
-# cdef np.ndarray[DTYPE_t, ndim=2] anchor_intersections_c(
-#         np.ndarray[DTYPE_t, ndim=2] anchors,
-#         np.ndarray[DTYPE_t, ndim=2] query_boxes):
-#     """
-#     For each query box compute the intersection ratio covered by anchors
-#     ----------
-#     Parameters
-#     ----------
-#     boxes: (N, 2) ndarray of float
-#     query_boxes: (K, 4) ndarray of float
-#     Returns
-#     -------
-#     overlaps: (N, K) ndarray of intersec between boxes and query_boxes
-#     """
-#     cdef unsigned int N = anchors.shape[0]
-#     cdef unsigned int K = query_boxes.shape[0]
-#     cdef np.ndarray[DTYPE_t, ndim=2] intersec = np.zeros((N, K), dtype=DTYPE)
-#     cdef DTYPE_t iw, ih, anchor_area, inter_area
-#     cdef DTYPE_t boxw, boxh
-#     cdef unsigned int k, n
-#     for n in range(N):
-#         anchor_area = anchors[n, 0] * anchors[n, 1]
-#         for k in range(K):
-#             boxw = (query_boxes[k, 2] - query_boxes[k, 0] + 1)
-#             boxh = (query_boxes[k, 3] - query_boxes[k, 1] + 1)
-#             iw = min(anchors[n, 0], boxw)
-#             ih = min(anchors[n, 1], boxh)
-#             inter_area = iw * ih
-#             intersec[n, k] = inter_area / (anchor_area + boxw * boxh - inter_area)
-#
-#     return intersec
+def anchor_intersections(
+        np.ndarray[DTYPE_t, ndim=2] anchors,
+        np.ndarray[DTYPE_t, ndim=2] query_boxes):
+    return anchor_intersections_c(anchors, query_boxes)
+
+
+cdef np.ndarray[DTYPE_t, ndim=2] anchor_intersections_c(
+        np.ndarray[DTYPE_t, ndim=2] anchors,
+        np.ndarray[DTYPE_t, ndim=2] query_boxes):
+    """
+    For each query box compute the intersection ratio covered by anchors
+    ----------
+    Parameters
+    ----------
+    boxes: (N, 2) ndarray of float
+    query_boxes: (K, 4) ndarray of float
+    Returns
+    -------
+    overlaps: (N, K) ndarray of intersec between boxes and query_boxes
+    """
+    cdef unsigned int N = anchors.shape[0]
+    cdef unsigned int K = query_boxes.shape[0]
+    cdef np.ndarray[DTYPE_t, ndim=2] intersec = np.zeros((N, K), dtype=DTYPE)
+    cdef DTYPE_t iw, ih, anchor_area, inter_area
+    cdef DTYPE_t boxw, boxh
+    cdef unsigned int k, n
+    for n in range(N):
+        anchor_area = anchors[n, 0] * anchors[n, 1]
+        for k in range(K):
+            boxw = (query_boxes[k, 2] - query_boxes[k, 0] + 1)
+            boxh = (query_boxes[k, 3] - query_boxes[k, 1] + 1)
+            iw = min(anchors[n, 0], boxw)
+            ih = min(anchors[n, 1], boxh)
+            inter_area = iw * ih
+            intersec[n, k] = inter_area / (anchor_area + boxw * boxh - inter_area)
+
+    return intersec
 
 
 def bbox_intersections_self(

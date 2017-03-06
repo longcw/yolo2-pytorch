@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import utils.network as net_utils
 import cfgs.config as cfg
 from layers.reorg.reorg_layer import ReorgLayer
-from utils.cython_bbox import bbox_ious, bbox_intersections, bbox_overlaps
+from utils.cython_bbox import bbox_ious, bbox_intersections, bbox_overlaps, anchor_intersections
 from utils.cython_yolo import yolo_to_bbox
 
 
@@ -94,7 +94,8 @@ class Darknet19(nn.Module):
 
         # tx, ty, tw, th, to -> sig(tx), sig(ty), exp(tw), exp(th), sig(to)
         xy_pred = F.sigmoid(conv5_reshaped[:, :, :, 0:2])
-        wh_pred = torch.exp(conv5_reshaped[:, :, :, 2:4])
+        # wh_pred = torch.exp(conv5_reshaped[:, :, :, 2:4])
+        wh_pred = conv5_reshaped[:, :, :, 2:4]
         bbox_pred = torch.cat([xy_pred, wh_pred], 3)
 
         iou_pred = F.sigmoid(conv5_reshaped[:, :, :, 4:5])
@@ -105,29 +106,32 @@ class Darknet19(nn.Module):
         # for training
         if self.training:
             bbox_pred_np = bbox_pred.data.cpu().numpy()
-            _boxes, _ious, _classes, _mask = self._build_target(bbox_pred_np, gt_boxes, gt_classes, dontcare)
+            _boxes, _ious, _classes, _box_mask, _iou_mask, _class_mask = self._build_target(
+                bbox_pred_np, gt_boxes, gt_classes, dontcare)
+
             _boxes = net_utils.np_to_variable(_boxes)
             _ious = net_utils.np_to_variable(_ious)
             _classes = net_utils.np_to_variable(_classes)
-            _mask = net_utils.np_to_variable(_mask, dtype=torch.FloatTensor)
-            num_boxes = _mask.data.sum()
+            box_mask = net_utils.np_to_variable(_box_mask, dtype=torch.FloatTensor)
+            iou_mask = net_utils.np_to_variable(_iou_mask, dtype=torch.FloatTensor)
+            class_mask = net_utils.np_to_variable(_class_mask, dtype=torch.FloatTensor)
 
-            bbox_mask = _mask.expand_as(_boxes)
-            self.bbox_loss = F.smooth_l1_loss(bbox_mask * bbox_pred, bbox_mask * _boxes,
-                                              size_average=False) / num_boxes
+            num_boxes = sum((len(boxes) for boxes in gt_boxes))
 
-            iou_mask = _mask * (iou_pred.data.numel() / num_boxes) + \
-                       net_utils.np_to_variable(np.ones(_mask.size(), dtype=np.float))
-            self.iou_loss = nn.L1Loss()(iou_pred * iou_mask, _ious * iou_mask)
+            # _boxes[:, :, :, 2:4] = torch.log(_boxes[:, :, :, 2:4])
+            box_mask = box_mask.expand_as(_boxes)
+            # self.bbox_loss = torch.sum(torch.pow(_boxes - bbox_pred, 2) * box_mask) / num_boxes
+            self.bbox_loss = nn.MSELoss(size_average=False)(bbox_pred * box_mask, _boxes * box_mask) / num_boxes
 
-            cls_mask = _mask.expand_as(score_pred)
-            self.cls_loss = nn.L1Loss(size_average=False)(prob_pred * cls_mask, _classes * cls_mask) / num_boxes
-            # cls_loss = F.cross_entropy(score_pred.view(-1, score_pred.size()[-1]), _classes.view(-1))
+            # self.iou_loss = torch.sum(torch.pow(_ious - iou_pred, 2) * iou_mask) / num_boxes
+            self.iou_loss = nn.MSELoss(size_average=False)(iou_pred * iou_mask, _ious * iou_mask) / num_boxes
 
-            # print prob_pred.size(), _classes.size(), _mask.size()
-            # cls_loss = nn.MSELoss()(prob_pred * _mask, _classes * _mask)
-            # print num_boxes
-            # print bbox_loss, iou_loss, cls_loss
+            class_mask = class_mask.expand_as(prob_pred)
+            # self.cls_loss = torch.sum(torch.pow(_classes - prob_pred, 2) * class_mask) / num_boxes
+            self.cls_loss = nn.MSELoss(size_average=False)(prob_pred * class_mask, _classes * class_mask) / num_boxes
+
+        wh_pred = torch.exp(conv5_reshaped[:, :, :, 2:4])
+        bbox_pred = torch.cat([xy_pred, wh_pred], 3)
 
         return bbox_pred, iou_pred, prob_pred
 
@@ -144,10 +148,17 @@ class Darknet19(nn.Module):
         # net output
         bsize, hw, num_anchors, _ = bbox_pred_np.shape
         # gt
-        _boxes = np.zeros([bsize, hw, num_anchors, 4], dtype=np.float)
+
+        _classes = np.zeros([bsize, hw, num_anchors, cfg.num_classes], dtype=np.float)
+        _class_mask = np.zeros([bsize, hw, num_anchors, 1], dtype=np.float)
+
         _ious = np.zeros([bsize, hw, num_anchors, 1], dtype=np.float)
-        _classes = np.zeros([bsize, hw, num_anchors, cfg.num_classes], dtype=np.int)
-        _mask = np.zeros([bsize, hw, num_anchors, 1], dtype=np.int)
+        _iou_mask = np.zeros([bsize, hw, num_anchors, 1], dtype=np.float)
+
+        _boxes = np.zeros([bsize, hw, num_anchors, 4], dtype=np.float)
+        _boxes[:, :, :, 0:2] = 0.5
+        _boxes[:, :, :, 2:4] = 1.0
+        _box_mask = np.zeros([bsize, hw, num_anchors, 1], dtype=np.float) + 0.01
 
         # scale pred_bbox
         anchors = np.ascontiguousarray(cfg.anchors, dtype=np.float)
@@ -158,9 +169,17 @@ class Darknet19(nn.Module):
         bbox_np[:, :, :, 0::2] *= float(inp_size[0])
         bbox_np[:, :, :, 1::2] *= float(inp_size[1])
 
-        # assign each box to cells
         for b in range(bsize):
             gt_boxes_b = np.asarray(gt_boxes[b], dtype=np.float)
+
+            # for each cell
+            bbox_np_b = np.reshape(bbox_np[b], [-1, 4])
+            ious = bbox_ious(
+                np.ascontiguousarray(bbox_np_b, dtype=np.float),
+                np.ascontiguousarray(gt_boxes_b, dtype=np.float)
+            )
+            best_ious = np.max(ious, axis=1).reshape(_iou_mask.shape[1:])
+            _iou_mask[b][best_ious <= cfg.iou_thresh] = cfg.noobject_scale
 
             # locate the cell of each gt_boxe
             cell_w = float(inp_size[0]) / W
@@ -169,8 +188,6 @@ class Darknet19(nn.Module):
             cy = (gt_boxes_b[:, 1] + gt_boxes_b[:, 3]) * 0.5 / cell_h
             cell_inds = np.floor(cy) * W + np.floor(cx)
             cell_inds = cell_inds.astype(np.int)
-            # gt_boxes[:, :, 0::2] /= inp_size[1]
-            # gt_boxes[:, :, 1::2] /= inp_size[0]
 
             target_boxes = np.empty(gt_boxes_b.shape, dtype=np.float)
             target_boxes[:, 0] = cx - np.floor(cx)  # cx
@@ -178,47 +195,35 @@ class Darknet19(nn.Module):
             target_boxes[:, 2] = (gt_boxes_b[:, 2] - gt_boxes_b[:, 0]) / inp_size[0] * out_size[0]  # tw
             target_boxes[:, 3] = (gt_boxes_b[:, 3] - gt_boxes_b[:, 1]) / inp_size[1] * out_size[1]  # th
 
-            cell_boxes = [[] for _ in range(hw)]
-            for i, ind in enumerate(cell_inds):
-                # print ind
-                if ind >= hw or ind < 0:
-                    print ind
+            # for each gt boxes, match the best anchor
+            gt_boxes_resize = np.copy(gt_boxes_b)
+            gt_boxes_resize[:, 0::2] *= (out_size[0] / float(inp_size[0]))
+            gt_boxes_resize[:, 1::2] *= (out_size[1] / float(inp_size[1]))
+            anchor_ious = anchor_intersections(
+                anchors,
+                np.ascontiguousarray(gt_boxes_resize, dtype=np.float)
+            )
+            anchor_inds = np.argmax(anchor_ious, axis=0)
+            for i, cell_ind in enumerate(cell_inds):
+                if cell_ind >= hw or cell_ind < 0:
+                    print cell_ind
                     continue
-                cell_boxes[ind].append(i)
+                a = anchor_inds[i]
 
-            for i in range(hw):
-                if len(cell_boxes[i]) == 0:
-                    continue
-                bboxes = [gt_boxes_b[j] for j in cell_boxes[i]]
-                targets_b = np.array([target_boxes[j] for j in cell_boxes[i]], dtype=np.float)
-                targets_c = np.array([gt_classes[b][j] for j in cell_boxes[i]], dtype=np.int)
+                _iou_mask[b, cell_ind, a, :] = cfg.object_scale
+                _ious[b, cell_ind, a, :] = anchor_ious[a, i]
 
-                ious = bbox_ious(
-                    np.ascontiguousarray(bbox_np[b, i], dtype=np.float),
-                    np.ascontiguousarray(bboxes, dtype=np.float)
-                )
+                _box_mask[b, cell_ind, a, :] = cfg.coord_scale
+                target_boxes[i, 2:4] /= anchors[a]
+                _boxes[b, cell_ind, a, :] = target_boxes[i]
 
-                argmax = np.argmax(ious, axis=0)
-                for j, a in enumerate(argmax):
-                    if _ious[b, i, a, 0] <= ious[a, j]:
-                        _mask[b, i, a, :] = 1
-                        _ious[b, i, a, 0] = 1.
-                        # _ious[b, i, a, 0] = ious[a, j]
-                        targets_b[j, 2:4] /= anchors[a]
-                        _boxes[b, i, a, :] = targets_b[j]
-                        # print bbox_pred_np[b, i, a], targets_b[j]
-                        # _classes[b, i, a, :] = targets_c[j]
-                        _classes[b, i, a, targets_c[j]] = 1
+                _class_mask[b, cell_ind, a, :] = cfg.class_scale
+                _classes[b, cell_ind, a, gt_classes[b][i]] = 1.
 
-            # _boxes[:, :, :, 2:4] /= anchors
+        _boxes[:, :, :, 2:4] = np.maximum(_boxes[:, :, :, 2:4], 0.001)
+        _boxes[:, :, :, 2:4] = np.log(_boxes[:, :, :, 2:4])
 
-                #
-                # _boxes[b, i, :, :] = _box
-                # _ious[b, i, :, :] = np.expand_dims(ious[(np.arange(len(argmax)), argmax)], 1)
-                # _classes[b, i, :, targets_c[argmax]] = 1
-                #
-                # _mask[b, i, :, :] = 1
-        return _boxes, _ious, _classes, _mask
+        return _boxes, _ious, _classes, _box_mask, _iou_mask, _class_mask
 
     def load_from_npz(self, fname, num_conv=None):
         dest_src = {'conv.weight': 'kernel', 'conv.bias': 'biases',
