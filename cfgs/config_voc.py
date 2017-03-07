@@ -15,9 +15,3 @@ num_classes = len(label_names)
 anchors = np.asarray([(1.08, 1.19), (3.42, 4.41), (6.63, 11.38), (9.42, 5.11), (16.62, 10.52)], dtype=np.float)
 num_anchors = len(anchors)
 
-# dataset
-imdb_train = 'voc_2007_trainval'
-imdb_test = 'voc_2007_test'
-batch_size = 1
-train_batch_size = 16
-

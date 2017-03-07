@@ -27,19 +27,57 @@ Testing an image in VOC2007 costs about 13~20ms.
 and set the model path in `demo.py`
 4. Run demo `python demo.py`. 
 
+### Training YOLOv2
+You can train YOLO2 on any dataset. Here we train it on VOC2007/2012.
+
+1. Download the training, validation, test data and VOCdevkit
+
+    ```bash
+    wget http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar
+    wget http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar
+    wget http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCdevkit_08-Jun-2007.tar
+    ```
+
+2. Extract all of these tars into one directory named `VOCdevkit`
+
+    ```bash
+    tar xvf VOCtrainval_06-Nov-2007.tar
+    tar xvf VOCtest_06-Nov-2007.tar
+    tar xvf VOCdevkit_08-Jun-2007.tar
+    ```
+
+3. It should have this basic structure
+
+    ```bash
+    $VOCdevkit/                           # development kit
+    $VOCdevkit/VOCcode/                   # VOC utility code
+    $VOCdevkit/VOC2007                    # image sets, annotations, etc.
+    # ... and several other directories ...
+    ```
+    
+4. Since the program loading the data in `yolo2-pytorch/data` by default,
+you can set the data path as following.
+    ```bash
+    cd yolo2-pytorch
+    mkdir data
+    cd data
+    ln -s $VOCdevkit VOCdevkit2007
+    ```
+    
+5. Download the [pretrained darknet19 model](https://drive.google.com/file/d/0B4pXCfnYmG1WRG52enNpcV80aDg/view?usp=sharing)
+and set the path in `yolo2-pytorch/cfgs/exps/darknet19_exp1.py`.
+
+7. (optional) Training with TensorBoard.
+
+    To use the TensorBoard, install Crayon (https://github.com/torrvision/crayon)
+and set `use_tensorboard = True` in `yolo2-pytorch/cfgs/config.py`.
+
+
+6. Run the training program: `python train.py`.
+
+
 
 ### Evaluation
-Follow [this project (TFFRCNN)](https://github.com/CharlesShang/TFFRCNN)
-to download and prepare the training, validation, test data. 
-
-Since the program loading the data in `yolo2-pytorch/data` by default,
-you can set the data path as following.
-```bash
-cd yolo2-pytorch
-mkdir data
-cd data
-ln -s $VOCdevkit VOCdevkit2007
-```
 
 Set the path of the `trained_model` in `yolo2-pytorch/cfgs/config.py`.
 ```bash
@@ -47,12 +85,3 @@ cd faster_rcnn_pytorch
 mkdir output
 python test.py
 ```
-
-### Training YOLOv2
-For training yolo2, you can get darknet19 model pretrained on ImageNet 
-by the author in [darknet19.weights.npz](https://drive.google.com/file/d/0B4pXCfnYmG1WRG52enNpcV80aDg/view?usp=sharing)
-and load it by `net.load_from_npz(cfg.pretrained_model, num_conv=18)`,
-and then prepare the dataset and run `python train.py`
-
-I implemented the loss function as same as [darknet](https://github.com/pjreddie/darknet)
-and trained it on VOC2007. The mAP on VOC2007 test set is 0.7186 after 158 epoch.

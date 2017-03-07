@@ -1,4 +1,4 @@
-exp_name = 'darknet19_voc07trainval_exp1'
+exp_name = 'darknet19_voc12trainval_exp1'
 
 pretrained_fname = 'darknet19.weights.npz'
 
@@ -20,7 +20,7 @@ coord_scale = 1.
 iou_thresh = 0.6
 
 # dataset
-imdb_train = 'voc_2007_trainval'
-imdb_test = 'voc_2007_test'
+imdb_train = 'voc_2012_trainval'
+imdb_test = 'voc_2012_test'
 batch_size = 1
 train_batch_size = 16
