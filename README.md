@@ -10,16 +10,7 @@ YOLO9000: Better, Faster, Stronger by Joseph Redmon and Ali Farhadi.
 
 I used a Cython extension for postprocessing and 
 `multiprocessing.Pool` for image preprocessing.
-Testing an image in VOC2007 costs about 13~20ms.
-
-**TODO:** Build the loss function for training.
-
-I can not train the network well so far. 
-Maybe you can implement the loss function by yourself and make 
-the training program work.
-You can download the model of darknet19 pretrained on ImageNet 
-by the author in [darknet19.weights.npz](https://drive.google.com/file/d/0B4pXCfnYmG1WRG52enNpcV80aDg/view?usp=sharing)
-and load it by `net.load_from_npz(cfg.pretrained_model, num_conv=18)`.
+Testing an image in VOC2007 costs about 13~20ms. 
 
 ### Installation and demo
 1. Clone this repository
@@ -57,21 +48,11 @@ mkdir output
 python test.py
 ```
 
-###Discuss
-I am confused about the difference between YOLO and RPN 
-(region proposal network). 
+### Training YOLOv2
+For training yolo2, you can get darknet19 model pretrained on ImageNet 
+by the author in [darknet19.weights.npz](https://drive.google.com/file/d/0B4pXCfnYmG1WRG52enNpcV80aDg/view?usp=sharing)
+and load it by `net.load_from_npz(cfg.pretrained_model, num_conv=18)`,
+and then prepare the dataset and run `python train.py`
 
-YOLO divides the image into a grid and predicts 
-bounding boxes and probabilities for 
-each cell in the grid. I think this is what RPN does, 
-especially for YOLOv2 which uses a set of anchors for 
-each cell. 
-
-One of the main difference between YOLO and RPN 
-is the loss functions. YOLO limits predicted location 
-coordinates in one of the cells during training and 
-testing while RPN associates predicted ROIs with 
-ground-truth boxes without any limitation. **Is is enough 
-to make a region proposal method become a detector? 
-Or I have missed something important.
-Welcome to discuss with me.**
+I implemented the loss function as same as [darknet](https://github.com/pjreddie/darknet)
+and trained it on VOC2007. The mAP on VOC2007 test set is 0.7186 after 158 epoch.

@@ -22,7 +22,7 @@ def preprocess(fname):
 # npz_fname = 'models/yolo-voc.weights.npz'
 # h5_fname = 'models/yolo-voc.weights.h5'
 trained_model = cfg.trained_model
-# trained_model = os.path.join(cfg.train_output_dir, 'darknet19_voc07trainval_exp3_14.h5')
+# trained_model = os.path.join(cfg.train_output_dir, 'darknet19_voc07trainval_exp3_158.h5')
 thresh = 0.5
 im_path = 'demo'
 # ---
