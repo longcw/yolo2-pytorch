@@ -15,7 +15,7 @@ cd ../
 
 cd roi_pooling/src
 echo "Compiling roi_pooling kernels by nvcc..."
-nvcc -c -o reorg_cuda_kernel.cu.o reorg_cuda_kernel.cu -x cu -Xcompiler -fPIC -arch=sm_52
-cd ../
+nvcc -c -o roi_pooling_kernel.cu.o roi_pooling_kernel.cu -x cu -Xcompiler -fPIC -arch=sm_52
+cd ../../
 python build.py
 cd ../
