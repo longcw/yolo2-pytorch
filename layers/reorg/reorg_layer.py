@@ -11,7 +11,7 @@ class ReorgFunction(Function):
         stride = self.stride
 
         bsize, c, h, w = x.size()
-        out_w, out_h, out_c = w / stride, h / stride, c * (stride * stride)
+        out_w, out_h, out_c = int(w / stride), int(h / stride), c * (stride * stride)
         out = torch.FloatTensor(bsize, out_c, out_h, out_w)
 
         if x.is_cuda:
