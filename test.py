@@ -110,7 +110,7 @@ if __name__ == '__main__':
                       yolo_utils.preprocess_test, processes=2, shuffle=False, dst_size=cfg.inp_size)
 
     net = Darknet19()
-    net_utils.load_net(cfg.trained_model, net)
+    net_utils.load_net(trained_model, net)
 
     net.cuda()
     net.eval()
