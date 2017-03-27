@@ -87,7 +87,7 @@ def preprocess_test(data):
 
     if inp_size is not None:
         w, h = inp_size
-        im = cv2.resize(im, (h, w))
+        im = cv2.resize(im, (w, h))
     im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
     im = im / 255.
 
