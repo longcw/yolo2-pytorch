@@ -100,6 +100,8 @@ def _process_batch(data):
         np.ascontiguousarray(gt_boxes_resize, dtype=np.float)
     )
     anchor_inds = np.argmax(anchor_ious, axis=0)
+
+    ious_reshaped = np.reshape(ious, [hw, num_anchors, len(cell_inds)])
     for i, cell_ind in enumerate(cell_inds):
         if cell_ind >= hw or cell_ind < 0:
             print cell_ind
@@ -107,7 +109,8 @@ def _process_batch(data):
         a = anchor_inds[i]
 
         _iou_mask[cell_ind, a, :] = cfg.object_scale
-        _ious[cell_ind, a, :] = anchor_ious[a, i]
+        # _ious[cell_ind, a, :] = anchor_ious[a, i]
+        _ious[cell_ind, a, :] = ious_reshaped[cell_ind, a, i]
 
         _box_mask[cell_ind, a, :] = cfg.coord_scale
         target_boxes[i, 2:4] /= anchors[a]
