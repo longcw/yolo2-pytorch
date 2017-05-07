@@ -97,5 +97,6 @@ ENV/
 .idea
 
 *.o
+models
 models/*
 data/*
