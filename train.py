@@ -2,6 +2,7 @@ import os
 import cv2
 import torch
 import numpy as np
+import datetime
 from torch.multiprocessing import Pool
 
 from darknet import Darknet19
@@ -56,10 +57,12 @@ if use_tensorboard:
     else:
         exp = cc.open_experiment(cfg.exp_name)
 
+batch_per_epoch = imdb.batch_per_epoch
 train_loss = 0
 bbox_loss, iou_loss, cls_loss = 0., 0., 0.
 cnt = 0
 t = Timer()
+step_cnt = 0
 for step in range(start_epoch * imdb.batch_per_epoch, cfg.max_epoch * imdb.batch_per_epoch):
     t.tic()
     # batch
@@ -84,15 +87,16 @@ for step in range(start_epoch * imdb.batch_per_epoch, cfg.max_epoch * imdb.batch
     loss.backward()
     optimizer.step()
     cnt += 1
-
+    step_cnt += 1
     duration = t.toc()
     if step % cfg.disp_interval == 0:
         train_loss /= cnt
         bbox_loss /= cnt
         iou_loss /= cnt
         cls_loss /= cnt
-        print('epoch: %d, step: %d, loss: %.3f, bbox_loss: %.3f, iou_loss: %.3f, cls_loss: %.3f (%.2f s/batch)' % (
-            imdb.epoch, step, train_loss, bbox_loss, iou_loss, cls_loss, duration))
+        print('epoch %d[%d/%d], loss: %.3f, bbox_loss: %.3f, iou_loss: %.3f, cls_loss: %.3f (%.2f s/batch, rest:%s)' % (
+            imdb.epoch, step_cnt, batch_per_epoch, train_loss, bbox_loss, iou_loss, cls_loss, duration,
+            str(datetime.timedelta(seconds=int((batch_per_epoch - step_cnt) * duration)))))
 
         if use_tensorboard and step % cfg.log_interval == 0:
             exp.add_scalar_value('loss_train', train_loss, step=step)
@@ -114,6 +118,6 @@ for step in range(start_epoch * imdb.batch_per_epoch, cfg.max_epoch * imdb.batch
         save_name = os.path.join(cfg.train_output_dir, '{}_{}.h5'.format(cfg.exp_name, imdb.epoch))
         net_utils.save_net(save_name, net)
         print('save model: {}'.format(save_name))
-
+        step_cnt = 0
 
 imdb.close()

@@ -195,7 +195,7 @@ def get_bbox_targets(images, gt_boxes, cls_inds, dontcares, cfg):
     return bbox_targets, cls_targets
 
 
-def draw_detection(im, bboxes, scores, cls_inds, cfg):
+def draw_detection(im, bboxes, scores, cls_inds, cfg, thr=0.3):
     # draw image
     colors = cfg.colors
     labels = cfg.label_names
@@ -203,6 +203,8 @@ def draw_detection(im, bboxes, scores, cls_inds, cfg):
     imgcv = np.copy(im)
     h, w, _ = imgcv.shape
     for i, box in enumerate(bboxes):
+        if scores[i] < thr:
+            continue
         cls_indx = cls_inds[i]
 
         thick = int((h + w) / 300)

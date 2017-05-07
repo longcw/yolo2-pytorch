@@ -22,8 +22,8 @@ def preprocess(fname):
 # hyper-parameters
 # ------------
 imdb_name = cfg.imdb_test
-trained_model = cfg.trained_model
-# trained_model = os.path.join(cfg.train_output_dir, 'darknet19_voc07trainval_exp3_158.h5')
+# trained_model = cfg.trained_model
+trained_model = os.path.join(cfg.train_output_dir, 'darknet19_voc07trainval_exp3_118.h5')
 output_dir = cfg.test_output_dir
 
 max_per_image = 300
@@ -91,7 +91,7 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
             _t['misc'].clear()
 
         if vis:
-            im2show = yolo_utils.draw_detection(ori_im, bboxes, scores, cls_inds, cfg)
+            im2show = yolo_utils.draw_detection(ori_im, bboxes, scores, cls_inds, cfg, thr=0.1)
             if im2show.shape[0] > 1100:
                 im2show = cv2.resize(im2show, (int(1000. * float(im2show.shape[1]) / im2show.shape[0]), 1000))
             cv2.imshow('test', im2show)
