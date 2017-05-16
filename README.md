@@ -10,7 +10,19 @@ YOLO9000: Better, Faster, Stronger by Joseph Redmon and Ali Farhadi.
 
 I used a Cython extension for postprocessing and 
 `multiprocessing.Pool` for image preprocessing.
-Testing an image in VOC2007 costs about 13~20ms. 
+Testing an image in VOC2007 costs about 13~20ms.
+
+**NOTE:**
+This is still an experimental project.
+VOC07 test mAP is about 0.71 (trained on VOC07+12 trainval,
+reported by [@cory8249](https://github.com/longcw/yolo2-pytorch/issues/23)).
+See https://github.com/longcw/yolo2-pytorch/issues/1 and https://github.com/longcw/yolo2-pytorch/issues/23
+for more details about training.
+
+BTW, I recommend to write your own dataloader using [torch.utils.data.Dataset](http://pytorch.org/docs/data.html)
+since `multiprocessing.Pool.imap` won't stop even there is no enough memory space.
+
+
 
 ### Installation and demo
 1. Clone this repository
