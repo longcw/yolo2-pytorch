@@ -100,3 +100,8 @@ ENV/
 models
 models/*
 data/*
+
+# Vim swap files
+*.swp
+*.swo
+*.swn

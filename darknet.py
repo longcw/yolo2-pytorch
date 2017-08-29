@@ -43,6 +43,7 @@ def _process_batch(data):
     hw, num_anchors, _ = bbox_pred_np.shape
 
     # gt
+    print(cfg.num_classes)
     _classes = np.zeros([hw, num_anchors, cfg.num_classes], dtype=np.float)
     _class_mask = np.zeros([hw, num_anchors, 1], dtype=np.float)
 
@@ -105,7 +106,7 @@ def _process_batch(data):
     ious_reshaped = np.reshape(ious, [hw, num_anchors, len(cell_inds)])
     for i, cell_ind in enumerate(cell_inds):
         if cell_ind >= hw or cell_ind < 0:
-            print cell_ind
+            print(cell_ind)
             continue
         a = anchor_inds[i]
 

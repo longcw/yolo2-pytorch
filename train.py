@@ -7,7 +7,7 @@ from torch.multiprocessing import Pool
 
 from darknet import Darknet19
 
-from datasets.pascal_voc import VOCDataset
+from datasets.lisa_hd import LISADataset
 import utils.yolo as yolo_utils
 import utils.network as net_utils
 from utils.timer import Timer
@@ -20,8 +20,9 @@ except ImportError:
 
 
 # data loader
-imdb = VOCDataset(cfg.imdb_train, cfg.DATA_DIR, cfg.train_batch_size,
-                  yolo_utils.preprocess_train, processes=2, shuffle=True, dst_size=cfg.inp_size)
+imdb = LISADataset('train', cfg.DATA_DIR, cfg.train_batch_size,
+                   yolo_utils.preprocess_train, processes=2, shuffle=True,
+                   dst_size=cfg.inp_size)
 print('load data succ...')
 
 net = Darknet19()
