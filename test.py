@@ -8,7 +8,7 @@ from darknet import Darknet19
 import utils.yolo as yolo_utils
 import utils.network as net_utils
 from utils.timer import Timer
-from datasets.pascal_voc import VOCDataset
+from datasets.lisa_hd import LISADataset
 import cfgs.config as cfg
 
 
@@ -23,12 +23,12 @@ def preprocess(fname):
 # ------------
 imdb_name = cfg.imdb_test
 # trained_model = cfg.trained_model
-trained_model = os.path.join(cfg.train_output_dir, 'darknet19_voc07trainval_exp3_118.h5')
+trained_model = os.path.join(cfg.train_output_dir, 'darknet19_voc07trainval_exp3_1.h5')
 output_dir = cfg.test_output_dir
 
 max_per_image = 300
-thresh = 0.01
-vis = False
+thresh = 0.5
+vis = True
 # ------------
 
 
@@ -76,7 +76,8 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
 
         # Limit to max_per_image detections *over all classes*
         if max_per_image > 0:
-            image_scores = np.hstack([all_boxes[j][i][:, -1] for j in range(imdb.num_classes)])
+            image_scores = np.hstack([all_boxes[j][i][:, -1]
+                                      for j in range(imdb.num_classes)])
             if len(image_scores) > max_per_image:
                 image_thresh = np.sort(image_scores)[-max_per_image]
                 for j in xrange(1, imdb.num_classes):
@@ -85,29 +86,32 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
         nms_time = _t['misc'].toc()
 
         if i % 20 == 0:
-            print 'im_detect: {:d}/{:d} {:.3f}s {:.3f}s' \
-                .format(i + 1, num_images, detect_time, nms_time)
+            print('im_detect: {:d}/{:d} {:.3f}s \
+                  {:.3f}s'.format(i + 1, num_images, detect_time, nms_time))
             _t['im_detect'].clear()
             _t['misc'].clear()
 
         if vis:
-            im2show = yolo_utils.draw_detection(ori_im, bboxes, scores, cls_inds, cfg, thr=0.1)
+            im2show = yolo_utils.draw_detection(ori_im, bboxes, scores,
+                                                cls_inds, cfg, thr=0.1)
             if im2show.shape[0] > 1100:
-                im2show = cv2.resize(im2show, (int(1000. * float(im2show.shape[1]) / im2show.shape[0]), 1000))
+                final_size = (int(1000. * float(im2show.shape[1]) / im2show.shape[0]), 1000)
+                im2show = cv2.resize(im2show, final_size)
             cv2.imshow('test', im2show)
             cv2.waitKey(0)
 
     with open(det_file, 'wb') as f:
         cPickle.dump(all_boxes, f, cPickle.HIGHEST_PROTOCOL)
 
-    print 'Evaluating detections'
+    print('Evaluating detections')
     imdb.evaluate_detections(all_boxes, output_dir)
 
 
 if __name__ == '__main__':
     # data loader
-    imdb = VOCDataset(imdb_name, cfg.DATA_DIR, cfg.batch_size,
-                      yolo_utils.preprocess_test, processes=2, shuffle=False, dst_size=cfg.inp_size)
+    imdb = LISADataset('train', cfg.DATA_DIR, 1,
+                       yolo_utils.preprocess_test, processes=2,
+                       shuffle=False, dst_size=cfg.inp_size)
 
     net = Darknet19()
     net_utils.load_net(trained_model, net)

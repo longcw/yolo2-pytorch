@@ -105,7 +105,7 @@ def _process_batch(data):
     ious_reshaped = np.reshape(ious, [hw, num_anchors, len(cell_inds)])
     for i, cell_ind in enumerate(cell_inds):
         if cell_ind >= hw or cell_ind < 0:
-            print cell_ind
+            print(cell_ind)
             continue
         a = anchor_inds[i]
 
