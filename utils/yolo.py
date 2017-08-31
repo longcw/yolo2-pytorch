@@ -79,7 +79,6 @@ def preprocess_train(data):
 
 
 def preprocess_test(data):
-
     im, _, inp_size = data
     if isinstance(im, (str, unicode)):
         im = cv2.imread(im)
@@ -177,8 +176,8 @@ def _bbox_targets_perimage(im_shape, gt_boxes, cls_inds, dontcare_areas, cfg):
     # gt_boxes[:, 2] = (gt_boxes[:, 2] - gt_boxes[:, 0]) / im_shape[1]
     # gt_boxes[:, 3] = (gt_boxes[:, 3] - gt_boxes[:, 1]) / im_shape[0]
 
-    bbox_target = [[] for _ in range(H*W)]
-    cls_target = [[] for _ in range(H*W)]
+    bbox_target = [[] for _ in range(H * W)]
+    cls_target = [[] for _ in range(H * W)]
     for i, ind in enumerate(cell_inds):
         bbox_target[ind].append(gt_boxes[i])
         cls_target[ind].append(cls_inds[i])
@@ -189,7 +188,8 @@ def get_bbox_targets(images, gt_boxes, cls_inds, dontcares, cfg):
     bbox_targets = []
     cls_targets = []
     for i, im in enumerate(images):
-        bbox_target, cls_target = _bbox_targets_perimage(im.shape, gt_boxes[i], cls_inds[i], dontcares[i], cfg)
+        bbox_target, cls_target = _bbox_targets_perimage(
+            im.shape, gt_boxes[i], cls_inds[i], dontcares[i], cfg)
         bbox_targets.append(bbox_target)
         cls_targets.append(cls_target)
     return bbox_targets, cls_targets
@@ -214,5 +214,4 @@ def draw_detection(im, bboxes, scores, cls_inds, cfg, thr=0.3):
         mess = '%s: %.3f' % (labels[cls_indx], scores[i])
         cv2.putText(imgcv, mess, (box[0], box[1] - 12),
                     0, 1e-3 * h, colors[cls_indx], thick // 3)
-
     return imgcv
