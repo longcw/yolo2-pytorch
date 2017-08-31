@@ -207,7 +207,13 @@ class EgoHandDataset(ImageDataset):
                            if bbox is not None]
             right_labels = [1 for bbox in [bbox_myright, bbox_yourright]
                             if bbox is not None]
-            labels = np.array(left_labels + right_labels)
+
+            # Set labels to 0 for left, 1 for right or 0 for all if no side
+            # differentiation
+            if self.differentiate_left_right:
+                labels = np.array(left_labels + right_labels)
+            else:
+                labels = np.zeros(len(bboxes)).astype(int)
             assert len(labels) == len(bboxes), 'label number {}\
                 should match bbox count'.format(len(labels), len(bboxes))
         return np_bboxes, labels

@@ -28,10 +28,11 @@ if cfg.dataset_name == 'lisa':
                        dst_size=cfg.inp_size)
 elif cfg.dataset_name == 'egohands':
     imdb = EgoHandDataset('train', cfg.DATA_DIR, cfg.train_batch_size,
-                          yolo_utils.preprocess_train, processes=2,
-                          shuffle=True, dst_size=cfg.inp_size)
+                          yolo_utils.preprocess_train, processes=1,
+                          shuffle=True, dst_size=cfg.inp_size,
+                          differentiate_left_right=cfg.differentiate_left_right)
 else:
-    raise ValueError('dataset name {} not recognized'.format(opt.dataset_name))
+    raise ValueError('dataset name {} not recognized'.format(cfg.dataset_name))
 print('load data succ...')
 
 net = Darknet19()
@@ -47,7 +48,9 @@ print('load net succ...')
 # optimizer
 start_epoch = 0
 lr = cfg.init_learning_rate
-optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=cfg.momentum, weight_decay=cfg.weight_decay)
+optimizer = torch.optim.SGD(net.parameters(), lr=lr,
+                            momentum=cfg.momentum,
+                            weight_decay=cfg.weight_decay)
 
 # tensorboad
 use_tensorboard = cfg.use_tensorboard and CrayonClient is not None
@@ -84,7 +87,8 @@ for step in range(start_epoch * imdb.batch_per_epoch, cfg.max_epoch * imdb.batch
     orgin_im = batch['origin_im']
 
     # forward
-    im_data = net_utils.np_to_variable(im, is_cuda=True, volatile=False).permute(0, 3, 1, 2)
+    im_data = net_utils.np_to_variable(
+        im, is_cuda=True, volatile=False).permute(0, 3, 1, 2)
     net(im_data, gt_boxes, gt_classes, dontcare)
 
     # backward
@@ -123,9 +127,11 @@ for step in range(start_epoch * imdb.batch_per_epoch, cfg.max_epoch * imdb.batch
     if step > 0 and (step % imdb.batch_per_epoch == 0):
         if imdb.epoch in cfg.lr_decay_epochs:
             lr *= cfg.lr_decay
-            optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=cfg.momentum, weight_decay=cfg.weight_decay)
+            optimizer = torch.optim.SGD(
+                net.parameters(), lr=lr, momentum=cfg.momentum, weight_decay=cfg.weight_decay)
 
-        save_name = os.path.join(cfg.train_output_dir, '{}_{}.h5'.format(cfg.exp_name, imdb.epoch))
+        save_name = os.path.join(cfg.train_output_dir,
+                                 '{}_{}.h5'.format(cfg.exp_name, imdb.epoch))
         net_utils.save_net(save_name, net)
         print('save model: {}'.format(save_name))
         step_cnt = 0
