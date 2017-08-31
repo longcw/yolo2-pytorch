@@ -28,8 +28,12 @@ iou_thresh = 0.6
 # trained model
 h5_fname = 'yolo-lisa.weights.h5'
 
-# VOC
-label_names = (['hand'])
+# Classes
+differentiate_left_right = False
+if differentiate_left_right:
+    label_names = (['left_hand', 'right_hand'])
+else:
+    label_names = (['hand'])
 num_classes = len(label_names)
 
 anchors = np.asarray([(1.08, 1.19), (3.42, 4.41), (6.63, 11.38), (9.42, 5.11), (16.62, 10.52)], dtype=np.float)

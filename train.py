@@ -8,8 +8,7 @@ from torch.multiprocessing import Pool
 
 from darknet import Darknet19
 
-import cfgs.config_lisa_full as lisa_cfg
-import cfgs.config_ego_full as ego_cfg
+from cfgs import config as cfg
 from datasets.lisa_hd import LISADataset
 from datasets.egohands import EgoHandDataset
 import utils.yolo as yolo_utils
@@ -21,20 +20,13 @@ try:
 except ImportError:
     CrayonClient = None
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--dataset_name', type=str, default='egohands',
-                    help='Dataset to use, either lisa or egohands')
-
-opt = parser.parse_args()
 
 # data loader
-if opt.dataset_name == 'lisa':
-    cfg = lisa_cfg
+if cfg.dataset_name == 'lisa':
     imdb = LISADataset('train', cfg.DATA_DIR, cfg.train_batch_size,
                        yolo_utils.preprocess_train, processes=2, shuffle=True,
                        dst_size=cfg.inp_size)
-elif opt.dataset_name == 'egohands':
-    cfg = ego_cfg
+elif cfg.dataset_name == 'egohands':
     imdb = EgoHandDataset('train', cfg.DATA_DIR, cfg.train_batch_size,
                           yolo_utils.preprocess_train, processes=2,
                           shuffle=True, dst_size=cfg.inp_size)

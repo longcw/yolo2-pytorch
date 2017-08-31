@@ -9,6 +9,7 @@ import utils.yolo as yolo_utils
 import utils.network as net_utils
 from utils.timer import Timer
 from datasets.lisa_hd import LISADataset
+from datasets.egohands import EgoHandDataset
 import cfgs.config as cfg
 
 
@@ -23,14 +24,14 @@ def preprocess(fname):
 # ------------
 imdb_name = cfg.imdb_test
 # trained_model = cfg.trained_model
-trained_model = os.path.join(cfg.train_output_dir, 'darknet19_voc07trainval_exp3_1.h5')
+# trained_model = os.path.join(cfg.train_output_dir, 'darknet19_egohands_debug_6.h5')
+trained_model = 'models/training/darknet19_egohands_exp1/darknet19_egohands_exp1_6.h5'
+trained_model = 'models/training/darknet19_lisa_exp1/darknet19_lisa_exp1_20.h5'
 output_dir = cfg.test_output_dir
 
 max_per_image = 300
 thresh = 0.5
 vis = True
-# ------------
-
 
 def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
     num_images = imdb.num_images
@@ -109,9 +110,18 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
 
 if __name__ == '__main__':
     # data loader
-    imdb = LISADataset('train', cfg.DATA_DIR, 1,
-                       yolo_utils.preprocess_test, processes=2,
-                       shuffle=False, dst_size=cfg.inp_size)
+    if cfg.dataset_name == 'lisa':
+        imdb = LISADataset('train', cfg.DATA_DIR, cfg.batch_size,
+                           yolo_utils.preprocess_test, processes=2,
+                           shuffle=False, dst_size=cfg.inp_size)
+    elif cfg.dataset_name == 'egohands':
+        imdb = EgoHandDataset('test', cfg.DATA_DIR, cfg.batch_size,
+                              yolo_utils.preprocess_test, processes=2,
+                              shuffle=False, dst_size=cfg.inp_size)
+    else:
+        raise ValueError('dataset name {} \
+                         not recognized'.format(cfg.dataset_name))
+    print('load data succ...')
 
     net = Darknet19()
     net_utils.load_net(trained_model, net)

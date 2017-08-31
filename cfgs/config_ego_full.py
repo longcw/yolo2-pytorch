@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 # # Exp params
-exp_name = 'darknet19_egohands_debug'
+exp_name = 'darknet19_egohands_exp1'
 
 pretrained_fname = 'darknet19.weights.npz'
 
@@ -29,7 +29,7 @@ iou_thresh = 0.6
 h5_fname = 'yolo-egohands.weights.h5'
 
 # Classes
-differentiate_left_right = True
+differentiate_left_right = False
 if differentiate_left_right:
     label_names = (['left_hand', 'right_hand'])
 else:
