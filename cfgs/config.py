@@ -1,4 +1,4 @@
-from .cfgs.config_ego_full import *
+from .config_ego_full import *
 
 
 dataset_name = "egohands"

@@ -1,6 +1,6 @@
 import torch
 from torch.autograd import Function
-from _ext import .reorg_layer
+from ._ext import reorg_layer
 
 
 class ReorgFunction(Function):
