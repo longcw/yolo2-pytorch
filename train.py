@@ -1,3 +1,4 @@
+import argparse
 import os
 import cv2
 import torch
@@ -7,22 +8,38 @@ from torch.multiprocessing import Pool
 
 from darknet import Darknet19
 
+import cfgs.config_lisa_full as lisa_cfg
+import cfgs.config_ego_full as ego_cfg
 from datasets.lisa_hd import LISADataset
+from datasets.egohands import EgoHandDataset
 import utils.yolo as yolo_utils
 import utils.network as net_utils
 from utils.timer import Timer
-import cfgs.config as cfg
 
 try:
     from pycrayon import CrayonClient
 except ImportError:
     CrayonClient = None
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--dataset_name', type=str, default='egohands',
+                    help='Dataset to use, either lisa or egohands')
+
+opt = parser.parse_args()
 
 # data loader
-imdb = LISADataset('train', cfg.DATA_DIR, cfg.train_batch_size,
-                   yolo_utils.preprocess_train, processes=2, shuffle=True,
-                   dst_size=cfg.inp_size)
+if opt.dataset_name == 'lisa':
+    cfg = lisa_cfg
+    imdb = LISADataset('train', cfg.DATA_DIR, cfg.train_batch_size,
+                       yolo_utils.preprocess_train, processes=2, shuffle=True,
+                       dst_size=cfg.inp_size)
+elif opt.dataset_name == 'egohands':
+    cfg = ego_cfg
+    imdb = EgoHandDataset('train', cfg.DATA_DIR, cfg.train_batch_size,
+                          yolo_utils.preprocess_train, processes=2,
+                          shuffle=True, dst_size=cfg.inp_size)
+else:
+    raise ValueError('dataset name {} not recognized'.format(opt.dataset_name))
 print('load data succ...')
 
 net = Darknet19()
