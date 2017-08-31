@@ -1,4 +1,4 @@
-import torch
+iimport torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
@@ -271,7 +271,7 @@ class Darknet19(nn.Module):
                     'bn.running_var': 'moving_variance'}
         params = np.load(fname)
         own_dict = self.state_dict()
-        keys = own_dict.keys()
+        keys = list(own_dict.keys())
 
         for i, start in enumerate(range(0, len(keys), 5)):
             if num_conv is not None and i >= num_conv:

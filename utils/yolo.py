@@ -1,7 +1,7 @@
 import cv2
 import os
 import numpy as np
-from im_transform import imcv2_affine_trans, imcv2_recolor
+from .im_transform import imcv2_affine_trans, imcv2_recolor
 # from box import BoundBox, box_iou, prob_compare
 from utils.nms_wrapper import nms
 from utils.cython_yolo import yolo_to_bbox
@@ -80,7 +80,7 @@ def preprocess_train(data):
 
 def preprocess_test(data):
     im, _, inp_size = data
-    if isinstance(im, (str, unicode)):
+    if isinstance(im, (bytes, str)):
         im = cv2.imread(im)
     ori_im = np.copy(im)
 

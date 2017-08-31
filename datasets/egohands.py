@@ -1,4 +1,4 @@
-import cPickle
+import pickle
 import os
 
 import numpy as np
@@ -7,8 +7,8 @@ import scipy.io as sio
 
 # from functools import partial
 
-from imdb import ImageDataset
-from voc_eval import voc_eval
+from .imdb import ImageDataset
+from .voc_eval import voc_eval
 # from utils.yolo import preprocess_train
 
 
@@ -109,7 +109,7 @@ class EgoHandDataset(ImageDataset):
         cache_file = os.path.join(self.cache_path, self.name + '_gt_roidb.pkl')
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as fid:
-                roidb = cPickle.load(fid)
+                roidb = pickle.load(fid)
             print('{} gt roidb loaded from {}'.format(self.name,
                                                       cache_file))
             return roidb
@@ -117,7 +117,7 @@ class EgoHandDataset(ImageDataset):
         gt_roidb = [self._annotation_from_index(index)
                     for index in self.image_indexes]
         with open(cache_file, 'wb') as fid:
-            cPickle.dump(gt_roidb, fid, cPickle.HIGHEST_PROTOCOL)
+            pickle.dump(gt_roidb, fid, pickle.HIGHEST_PROTOCOL)
         print('wrote gt roidb to {}'.format(cache_file))
 
         return gt_roidb
@@ -241,7 +241,7 @@ class EgoHandDataset(ImageDataset):
                     if dets == []:
                         continue
                     # the VOCdevkit expects 1-based indices
-                    for k in xrange(dets.shape[0]):
+                    for k in range(dets.shape[0]):
                         f.write('{:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.
                                 format(index, dets[k, -1],
                                        dets[k, 0] + 1, dets[k, 1] + 1,
@@ -276,8 +276,8 @@ class EgoHandDataset(ImageDataset):
             aps += [ap]
             print('AP for {} = {:.4f}'.format(cls, ap))
             if output_dir is not None:
-                with open(os.path.join(output_dir, cls + '_pr.pkl'), 'w') as f:
-                    cPickle.dump({'rec': rec, 'prec': prec, 'ap': ap}, f)
+                with open(os.path.join(output_dir, cls + '_pr.pkl'), 'wb') as f:
+                    pickle.dump({'rec': rec, 'prec': prec, 'ap': ap}, f)
         print('Mean AP = {:.4f}'.format(np.mean(aps)))
         print('~~~~~~~~')
         print('Results:')
