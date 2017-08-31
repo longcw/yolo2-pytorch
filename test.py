@@ -2,7 +2,7 @@ import os
 import cv2
 import torch
 import numpy as np
-import cPickle
+import pickle
 
 from darknet import Darknet19
 import utils.yolo as yolo_utils
@@ -39,8 +39,8 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
     # all detections are collected into:
     #    all_boxes[cls][image] = N x 5 array of detections in
     #    (x1, y1, x2, y2, score)
-    all_boxes = [[[] for _ in xrange(num_images)]
-                 for _ in xrange(imdb.num_classes)]
+    all_boxes = [[[] for _ in range(num_images)]
+                 for _ in range(imdb.num_classes)]
 
     # timers
     _t = {'im_detect': Timer(), 'misc': Timer()}
@@ -81,7 +81,7 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
                                       for j in range(imdb.num_classes)])
             if len(image_scores) > max_per_image:
                 image_thresh = np.sort(image_scores)[-max_per_image]
-                for j in xrange(1, imdb.num_classes):
+                for j in range(1, imdb.num_classes):
                     keep = np.where(all_boxes[j][i][:, -1] >= image_thresh)[0]
                     all_boxes[j][i] = all_boxes[j][i][keep, :]
         nms_time = _t['misc'].toc()
@@ -102,7 +102,7 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
             cv2.waitKey(0)
 
     with open(det_file, 'wb') as f:
-        cPickle.dump(all_boxes, f, cPickle.HIGHEST_PROTOCOL)
+        pickle.dump(all_boxes, f, pickle.HIGHEST_PROTOCOL)
 
     print('Evaluating detections')
     imdb.evaluate_detections(all_boxes, output_dir)
