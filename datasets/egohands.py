@@ -51,7 +51,8 @@ class EgoHandDataset(ImageDataset):
                        img_file_template='frame_{frame:04d}.jpg'):
         """To be called after self.load_dataset()
         """
-        video_folder = os.path.join(self._video_path, self.video_ids[video_idx])
+        video_folder = os.path.join(
+            self._video_path, self.video_ids[video_idx])
         frames_annots = self.videos_annots[0, video_idx]
         frame_annots = frames_annots[0, frame_idx]
         frame_num = frame_annots['frame_num'][0, 0]
@@ -130,8 +131,8 @@ class EgoHandDataset(ImageDataset):
         num_objs = bboxes.shape[0]
 
         # if not self.differentiate_left_right:
-            # Keep only one class for hands, zero labels for all
-          #   gt_classes = np.zeros((num_objs), dtype=np.int32)
+        # Keep only one class for hands, zero labels for all
+        #   gt_classes = np.zeros((num_objs), dtype=np.int32)
         overlaps = np.zeros((num_objs, self.num_classes), dtype=np.float32)
         # "Seg" area for pascal is just the box area
         seg_areas = np.zeros((num_objs), dtype=np.float32)
