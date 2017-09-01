@@ -25,7 +25,7 @@ def preprocess(fname):
 imdb_name = cfg.imdb_test
 # trained_model = cfg.trained_model
 # trained_model = os.path.join(cfg.train_output_dir, 'darknet19_egohands_debug_6.h5')
-trained_model = 'models/training/darknet19_egohands_exp1/darknet19_egohands_exp1_6.h5'
+trained_model = 'models/training/darknet19_egohands_exp1/darknet19_egohands_exp1_5.h5'
 trained_model = 'models/training/darknet19_lisa_exp1/darknet19_lisa_exp1_20.h5'
 output_dir = cfg.test_output_dir
 
@@ -46,7 +46,7 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
     _t = {'im_detect': Timer(), 'misc': Timer()}
     det_file = os.path.join(output_dir, 'detections.pkl')
 
-    for i in range(num_images):
+    for image_idx in range(num_images):
 
         batch = imdb.next_batch()
         ori_im = batch['origin_im'][0]
@@ -65,30 +65,35 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
 
         _t['misc'].tic()
 
-        for j in range(imdb.num_classes):
-            inds = np.where(cls_inds == j)[0]
+        for class_idx in range(imdb.num_classes):
+            inds = np.where(cls_inds == class_idx)[0]
             if len(inds) == 0:
-                all_boxes[j][i] = np.empty([0, 5], dtype=np.float32)
+                all_boxes[class_idx][image_idx] = np.empty([0, 5],
+                                                           dtype=np.float32)
                 continue
             c_bboxes = bboxes[inds]
             c_scores = scores[inds]
-            c_dets = np.hstack((c_bboxes, c_scores[:, np.newaxis])).astype(np.float32, copy=False)
-            all_boxes[j][i] = c_dets
+            c_dets = np.hstack((c_bboxes,
+                                c_scores[:, np.newaxis])).astype(np.float32,
+                                                                 copy=False)
+            all_boxes[class_idx][image_idx] = c_dets
 
         # Limit to max_per_image detections *over all classes*
         if max_per_image > 0:
-            image_scores = np.hstack([all_boxes[j][i][:, -1]
-                                      for j in range(imdb.num_classes)])
+            image_scores = np.hstack([all_boxes[class_idx][image_idx][:, -1]
+                                      for class_idx in range(imdb.num_classes)])
+
+            # Only keep max_per_image detections with highest scores
             if len(image_scores) > max_per_image:
                 image_thresh = np.sort(image_scores)[-max_per_image]
-                for j in range(1, imdb.num_classes):
-                    keep = np.where(all_boxes[j][i][:, -1] >= image_thresh)[0]
-                    all_boxes[j][i] = all_boxes[j][i][keep, :]
+                for class_idx in range(1, imdb.num_classes):
+                    keep = np.where(all_boxes[class_idx][image_idx][:, -1] >= image_thresh)[0]
+                    all_boxes[class_idx][image_idx] = all_boxes[class_idx][image_idx][keep, :]
         nms_time = _t['misc'].toc()
 
-        if i % 20 == 0:
+        if image_idx % 20 == 0:
             print('im_detect: {:d}/{:d} {:.3f}s \
-                  {:.3f}s'.format(i + 1, num_images, detect_time, nms_time))
+                  {:.3f}s'.format(image_idx + 1, num_images, detect_time, nms_time))
             _t['im_detect'].clear()
             _t['misc'].clear()
 
@@ -96,7 +101,8 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
             im2show = yolo_utils.draw_detection(ori_im, bboxes, scores,
                                                 cls_inds, cfg, thr=0.1)
             if im2show.shape[0] > 1100:
-                final_size = (int(1000. * float(im2show.shape[1]) / im2show.shape[0]), 1000)
+                final_size = (int(1000. * float(im2show.shape[1]) /
+                                  im2show.shape[0]), 1000)
                 im2show = cv2.resize(im2show, final_size)
             cv2.imshow('test', im2show)
             cv2.waitKey(0)
