@@ -11,6 +11,7 @@ from utils.timer import Timer
 from datasets.eval import class_AP
 from datasets.lisa_hd import LISADataset
 from datasets.egohands import EgoHandDataset
+from datasets.pascal_voc import VOCDataset
 import cfgs.config as cfg
 
 
@@ -29,6 +30,7 @@ imdb_name = cfg.imdb_test
 # trained_model = os.path.join(cfg.train_output_dir, 'darknet19_egohands_debug_6.h5')
 trained_model = 'models/training/darknet19_egohands_exp1/darknet19_egohands_exp1_5.h5'
 trained_model = 'models/training/darknet19_lisa_exp1/darknet19_lisa_exp1_20.h5'
+trained_model = 'models/yolo-voc.weights.h5'
 output_dir = cfg.test_output_dir
 
 max_per_image = 300
@@ -141,6 +143,11 @@ if __name__ == '__main__':
                               shuffle=False, dst_size=cfg.inp_size,
                               differentiate_left_right=False,
                               use_cache=False)
+    elif cfg.dataset_name == 'voc':
+        imdb = VOCDataset(imdb_name, cfg.DATA_DIR, cfg.batch_size,
+                          yolo_utils.preprocess_test, processes=2,
+                          shuffle=False, dst_size=cfg.inp_size)
+
     else:
         raise ValueError('dataset name {} \
                          not recognized'.format(cfg.dataset_name))
