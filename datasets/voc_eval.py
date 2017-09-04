@@ -141,11 +141,10 @@ def voc_eval(detpath,
     with open(detfile, 'r') as f:
         lines = f.readlines()
     if any(lines) == 1:
-
-        splitlines = [x.strip().split(' ') for x in lines]
-        image_ids = [x[0] for x in splitlines]
-        confidence = np.array([float(x[1]) for x in splitlines])
-        BB = np.array([[float(z) for z in x[2:]] for x in splitlines])
+        splitlines = [line.strip().split(' ') for line in lines]
+        image_ids = [line[0] for line in splitlines]
+        confidence = np.array([float(line[1]) for line in splitlines])
+        BB = np.array([[float(z) for z in line[2:]] for line in splitlines])
 
         # sort by confidence
         sorted_ind = np.argsort(-confidence)
@@ -188,6 +187,7 @@ def voc_eval(detpath,
             if max_overlap > ovthresh:
                 if not R['difficult'][jmax]:
                     if not R['det'][jmax]:
+                        # Here image_idx matches a given (image, bbox) detection
                         true_positives[image_idx] = 1.
                         R['det'][jmax] = 1
                     else:

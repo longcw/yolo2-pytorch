@@ -8,6 +8,7 @@ from darknet import Darknet19
 import utils.yolo as yolo_utils
 import utils.network as net_utils
 from utils.timer import Timer
+from datasets.eval import class_AP
 from datasets.lisa_hd import LISADataset
 from datasets.egohands import EgoHandDataset
 import cfgs.config as cfg
@@ -16,7 +17,8 @@ import cfgs.config as cfg
 def preprocess(fname):
     # return fname
     image = cv2.imread(fname)
-    im_data = np.expand_dims(yolo_utils.preprocess_test(image, cfg.inp_size), 0)
+    im_data = np.expand_dims(
+        yolo_utils.preprocess_test(image, cfg.inp_size), 0)
     return image, im_data
 
 
@@ -30,8 +32,9 @@ trained_model = 'models/training/darknet19_lisa_exp1/darknet19_lisa_exp1_20.h5'
 output_dir = cfg.test_output_dir
 
 max_per_image = 300
-thresh = 0.5
-vis = True
+thresh = 0.4
+vis = False
+
 
 def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
     num_images = imdb.num_images
@@ -50,7 +53,8 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
 
         batch = imdb.next_batch()
         ori_im = batch['origin_im'][0]
-        im_data = net_utils.np_to_variable(batch['images'], is_cuda=True, volatile=True).permute(0, 3, 1, 2)
+        im_data = net_utils.np_to_variable(
+            batch['images'], is_cuda=True, volatile=True).permute(0, 3, 1, 2)
 
         _t['im_detect'].tic()
         bbox_pred, iou_pred, prob_pred = net(im_data)
@@ -60,23 +64,29 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
         iou_pred = iou_pred.data.cpu().numpy()
         prob_pred = prob_pred.data.cpu().numpy()
 
-        bboxes, scores, cls_inds = yolo_utils.postprocess(bbox_pred, iou_pred, prob_pred, ori_im.shape, cfg, thresh)
+        bboxes, scores, cls_inds = yolo_utils.postprocess(
+            bbox_pred, iou_pred, prob_pred, ori_im.shape, cfg, thresh)
         detect_time = _t['im_detect'].toc()
 
         _t['misc'].tic()
 
         for class_idx in range(imdb.num_classes):
+            # Extract class
             inds = np.where(cls_inds == class_idx)[0]
             if len(inds) == 0:
                 all_boxes[class_idx][image_idx] = np.empty([0, 5],
                                                            dtype=np.float32)
                 continue
-            c_bboxes = bboxes[inds]
-            c_scores = scores[inds]
-            c_dets = np.hstack((c_bboxes,
-                                c_scores[:, np.newaxis])).astype(np.float32,
-                                                                 copy=False)
-            all_boxes[class_idx][image_idx] = c_dets
+            class_bboxes = bboxes[inds]
+            class_scores = scores[inds]
+            class_scores = class_scores[:, np.newaxis]
+
+            # Create class detections in format
+            # [[x_min, y_min, x_max, y_max, score], ...]
+            class_detections = np.hstack((class_bboxes,
+                                          class_scores)).astype(np.float32,
+                                                                copy=False)
+            all_boxes[class_idx][image_idx] = class_detections
 
         # Limit to max_per_image detections *over all classes*
         if max_per_image > 0:
@@ -87,7 +97,8 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
             if len(image_scores) > max_per_image:
                 image_thresh = np.sort(image_scores)[-max_per_image]
                 for class_idx in range(1, imdb.num_classes):
-                    keep = np.where(all_boxes[class_idx][image_idx][:, -1] >= image_thresh)[0]
+                    keep = np.where(
+                        all_boxes[class_idx][image_idx][:, -1] >= image_thresh)[0]
                     all_boxes[class_idx][image_idx] = all_boxes[class_idx][image_idx][keep, :]
         nms_time = _t['misc'].toc()
 
@@ -106,6 +117,13 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
                 im2show = cv2.resize(im2show, final_size)
             cv2.imshow('test', im2show)
             cv2.waitKey(0)
+    tp, fp, fn = class_AP(imdb, all_boxes, class_name='hand', iou_thres=0.1)
+    print('tp ', tp)
+    print('fp ', fp)
+    print('fn ', fn)
+    print('AP', tp / (tp + fp))
+    import pdb; pdb.set_trace()
+
 
     with open(det_file, 'wb') as f:
         pickle.dump(all_boxes, f, pickle.HIGHEST_PROTOCOL)
@@ -123,7 +141,8 @@ if __name__ == '__main__':
     elif cfg.dataset_name == 'egohands':
         imdb = EgoHandDataset('test', cfg.DATA_DIR, cfg.batch_size,
                               yolo_utils.preprocess_test, processes=2,
-                              shuffle=False, dst_size=cfg.inp_size)
+                              shuffle=False, dst_size=cfg.inp_size,
+                              differentiate_left_right=False)
     else:
         raise ValueError('dataset name {} \
                          not recognized'.format(cfg.dataset_name))
