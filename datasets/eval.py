@@ -35,6 +35,23 @@ def iou(gt_box, pred_box):
 
 
 def class_AP(dataset, all_boxes, class_name, iou_thres=0.5):
+    """For each image go through detected bounding boxes by decreasing
+    order of confidence, for each detected bounding box, it is matches a ground
+    truth bounding box for the ground truth bounding box that has maximun iou
+    score among the ones that have a iou score abose iou_thres.
+    If no ground truth bounding box matches this criterion,
+    the detection is a false positive
+
+    Args:
+        all_boxes: list of lists of bounding boxes
+            (all_boxes[class_idx][image_idx] contains a numpy array of size
+            (n,5) where n is the number of bounding boxes and the five values
+            are (x_min, y_min, x_max, y_max, confidence)
+        class_name(str): name of class for which to compute the average
+            precision
+        iou_thres(float): minimum iou score for a bounding box to be considered
+            as a valid detection
+    """
     class_idx = dataset.classes.index(class_name)
     class_box_infos = all_boxes[class_idx]
 
@@ -44,9 +61,12 @@ def class_AP(dataset, all_boxes, class_name, iou_thres=0.5):
     class_bboxes = [class_box_info[:, 0:4]
                     for class_box_info in class_box_infos]
 
-    true_positives = 0
-    false_positives = 0
-    false_negatives = 0
+    total_true_pos = 0
+    total_false_positives = 0
+    total_false_negatives = 0
+    true_positive_conf = []
+    false_positive_conf = []
+    positive_count = 0
 
     # Go through all images
     for image_idx in range(len(class_bboxes)):
@@ -61,10 +81,19 @@ def class_AP(dataset, all_boxes, class_name, iou_thres=0.5):
         # go down detections and mark TPs and FPs
         detected_ids = []  # keeps track of already detected gt bboxes
 
-        # Ground truth information for images
+        # Ground truth information for image
         gt_detections = dataset.annotations[image_idx]['boxes']
+
+        # Count total number of ground truth positive bounding boxes
+        print('bounding box nb : ', len(gt_detections))
+
+        # Only focus on ground truth samples of the given class
         gt_classes = dataset.annotations[image_idx]['gt_classes']
         gt_detections = gt_detections[np.where(gt_classes == class_idx)]
+
+        # Count total number of positive detections
+        positive_count += len(gt_detections)
+
         for conf, bbox in zip(confidences, bboxes):
             detections = []
             # Find best detection in ground truth
@@ -74,10 +103,26 @@ def class_AP(dataset, all_boxes, class_name, iou_thres=0.5):
                     if bbox_iou > iou_thres:
                         detections.append((gt_idx, bbox_iou))
             if len(detections) > 0:
-                true_positives += 1
+                total_true_pos += 1
+                true_positive_conf.append((1, conf))
+                false_positive_conf.append((0, conf))
                 gt_best_detect_id = max(detections, key=itemgetter(1))[0]
                 detected_ids.append(gt_best_detect_id)
             else:
-                false_positives += 1
-        false_negatives += len(gt_detections) - len(detected_ids)
-    return true_positives, false_positives, false_negatives
+                total_false_positives += 1
+                false_positive_conf.append((1, conf))
+                true_positive_conf.append((0, conf))
+        total_false_negatives += len(gt_detections) - len(detected_ids)
+
+    # List true positives and false positives by increasing confidence
+    true_pos_conf_sort = sorted(true_positive_conf, key=itemgetter(1))
+    true_pos_sort = [flag for flag, conf in true_pos_conf_sort]
+    false_pos_conf_sort = sorted(false_positive_conf, key=itemgetter(1))
+    false_pos_sort = [flag for flag, conf in false_pos_conf_sort]
+
+    cum_true_pos = np.cumsum(true_pos_sort)
+    cum_false_pos = np.cumsum(false_pos_sort)
+
+    recall = cum_true_pos / positive_count
+    precision = cum_true_pos / (cum_true_pos + cum_false_pos)
+    return precision, recall

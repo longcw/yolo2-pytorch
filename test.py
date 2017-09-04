@@ -117,11 +117,7 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
                 im2show = cv2.resize(im2show, final_size)
             cv2.imshow('test', im2show)
             cv2.waitKey(0)
-    tp, fp, fn = class_AP(imdb, all_boxes, class_name='hand', iou_thres=0.1)
-    print('tp ', tp)
-    print('fp ', fp)
-    print('fn ', fn)
-    print('AP', tp / (tp + fp))
+    precision, recall = class_AP(imdb, all_boxes, class_name='hand', iou_thres=0.1)
     import pdb; pdb.set_trace()
 
 
@@ -137,12 +133,14 @@ if __name__ == '__main__':
     if cfg.dataset_name == 'lisa':
         imdb = LISADataset('train', cfg.DATA_DIR, cfg.batch_size,
                            yolo_utils.preprocess_test, processes=2,
-                           shuffle=False, dst_size=cfg.inp_size)
+                           shuffle=False, dst_size=cfg.inp_size,
+                           use_cache=False)
     elif cfg.dataset_name == 'egohands':
         imdb = EgoHandDataset('test', cfg.DATA_DIR, cfg.batch_size,
                               yolo_utils.preprocess_test, processes=2,
                               shuffle=False, dst_size=cfg.inp_size,
-                              differentiate_left_right=False)
+                              differentiate_left_right=False,
+                              use_cache=False)
     else:
         raise ValueError('dataset name {} \
                          not recognized'.format(cfg.dataset_name))

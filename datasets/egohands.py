@@ -15,7 +15,7 @@ from .voc_eval import voc_eval
 class EgoHandDataset(ImageDataset):
     def __init__(self, split, datadir, batch_size, im_processor,
                  processes=3, shuffle=True, dst_size=None,
-                 differentiate_left_right=True):
+                 differentiate_left_right=True, use_cache=False):
         """
         Args:
             split(str): either test or train
@@ -25,6 +25,7 @@ class EgoHandDataset(ImageDataset):
                                              processes, shuffle,
                                              dst_size)
         self.split = split
+        self.use_cache = use_cache
 
         # Set usefull paths for given split
         self._data_path = os.path.join(datadir, 'egohands')
@@ -107,7 +108,7 @@ class EgoHandDataset(ImageDataset):
         future calls.
         """
         cache_file = os.path.join(self.cache_path, self.name + '_gt_roidb.pkl')
-        if os.path.exists(cache_file):
+        if os.path.exists(cache_file) and not self.use_cache:
             with open(cache_file, 'rb') as fid:
                 roidb = pickle.load(fid)
             print('{} gt roidb loaded from {}'.format(self.name,
