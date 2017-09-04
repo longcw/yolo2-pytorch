@@ -119,8 +119,7 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
                 im2show = cv2.resize(im2show, final_size)
             cv2.imshow('test', im2show)
             cv2.waitKey(0)
-    precision, recall = class_AP(imdb, all_boxes, class_name='hand', iou_thres=0.1)
-    import pdb; pdb.set_trace()
+    precision, recall = class_AP(imdb, all_boxes, class_name=imdb._classes[0], iou_thres=0.1)
 
 
     with open(det_file, 'wb') as f:
