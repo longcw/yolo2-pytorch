@@ -14,6 +14,8 @@ from datasets.egohands import EgoHandDataset
 from datasets.pascal_voc import VOCDataset
 import cfgs.config as cfg
 
+from datasets.voc_eval import voc_ap, voc_eval
+from matplotlib import pyplot as plt
 
 def preprocess(fname):
     # return fname
@@ -26,6 +28,7 @@ def preprocess(fname):
 # hyper-parameters
 # ------------
 imdb_name = cfg.imdb_test
+print('dataset name', imdb_name)
 # trained_model = cfg.trained_model
 # trained_model = os.path.join(cfg.train_output_dir, 'darknet19_egohands_debug_6.h5')
 trained_model = 'models/training/darknet19_egohands_exp1/darknet19_egohands_exp1_5.h5'
@@ -34,11 +37,11 @@ trained_model = 'models/yolo-voc.weights.h5'
 output_dir = cfg.test_output_dir
 
 max_per_image = 300
-thresh = 0.4
+thresh = 0.01
 vis = False
 
 
-def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
+def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False, use_cache=False):
     num_images = imdb.num_images
 
     # all detections are collected into:
@@ -51,79 +54,107 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
     _t = {'im_detect': Timer(), 'misc': Timer()}
     det_file = os.path.join(output_dir, 'detections.pkl')
 
-    for image_idx in range(num_images):
+    if use_cache:
+        with open(det_file, 'rb') as f:
+            all_boxes = pickle.load(f)
+    else:
+        for image_idx in range(num_images):
 
-        batch = imdb.next_batch()
-        ori_im = batch['origin_im'][0]
-        im_data = net_utils.np_to_variable(
-            batch['images'], is_cuda=True, volatile=True).permute(0, 3, 1, 2)
+            batch = imdb.next_batch()
+            ori_im = batch['origin_im'][0]
+            im_data = net_utils.np_to_variable(
+                batch['images'], is_cuda=True, volatile=True).permute(0, 3, 1, 2)
 
-        _t['im_detect'].tic()
-        bbox_pred, iou_pred, prob_pred = net(im_data)
+            _t['im_detect'].tic()
+            bbox_pred, iou_pred, prob_pred = net(im_data)
 
-        # to numpy
-        bbox_pred = bbox_pred.data.cpu().numpy()
-        iou_pred = iou_pred.data.cpu().numpy()
-        prob_pred = prob_pred.data.cpu().numpy()
+            # to numpy
+            bbox_pred = bbox_pred.data.cpu().numpy()
+            iou_pred = iou_pred.data.cpu().numpy()
+            prob_pred = prob_pred.data.cpu().numpy()
 
-        bboxes, scores, cls_inds = yolo_utils.postprocess(
-            bbox_pred, iou_pred, prob_pred, ori_im.shape, cfg, thresh)
-        detect_time = _t['im_detect'].toc()
+            bboxes, scores, cls_inds = yolo_utils.postprocess(
+                bbox_pred, iou_pred, prob_pred, ori_im.shape, cfg, thresh)
+            detect_time = _t['im_detect'].toc()
 
-        _t['misc'].tic()
+            _t['misc'].tic()
 
-        for class_idx in range(imdb.num_classes):
-            # Extract class
-            inds = np.where(cls_inds == class_idx)[0]
-            if len(inds) == 0:
-                all_boxes[class_idx][image_idx] = np.empty([0, 5],
-                                                           dtype=np.float32)
-                continue
-            class_bboxes = bboxes[inds]
-            class_scores = scores[inds]
-            class_scores = class_scores[:, np.newaxis]
+            for class_idx in range(imdb.num_classes):
+                # Extract class
+                inds = np.where(cls_inds == class_idx)[0]
+                if len(inds) == 0:
+                    all_boxes[class_idx][image_idx] = np.empty([0, 5],
+                                                               dtype=np.float32)
+                    continue
+                class_bboxes = bboxes[inds]
+                class_scores = scores[inds]
+                class_scores = class_scores[:, np.newaxis]
 
-            # Create class detections in format
-            # [[x_min, y_min, x_max, y_max, score], ...]
-            class_detections = np.hstack((class_bboxes,
-                                          class_scores)).astype(np.float32,
-                                                                copy=False)
-            all_boxes[class_idx][image_idx] = class_detections
+                # Create class detections in format
+                # [[x_min, y_min, x_max, y_max, score], ...]
+                class_detections = np.hstack((class_bboxes,
+                                              class_scores)).astype(np.float32,
+                                                                    copy=False)
+                all_boxes[class_idx][image_idx] = class_detections
 
-        # Limit to max_per_image detections *over all classes*
-        if max_per_image > 0:
-            image_scores = np.hstack([all_boxes[class_idx][image_idx][:, -1]
-                                      for class_idx in range(imdb.num_classes)])
+            # Limit to max_per_image detections *over all classes*
+            if max_per_image > 0:
+                image_scores = np.hstack([all_boxes[class_idx][image_idx][:, -1]
+                                          for class_idx in range(imdb.num_classes)])
 
-            # Only keep max_per_image detections with highest scores
-            if len(image_scores) > max_per_image:
-                image_thresh = np.sort(image_scores)[-max_per_image]
-                for class_idx in range(1, imdb.num_classes):
-                    keep = np.where(
-                        all_boxes[class_idx][image_idx][:, -1] >= image_thresh)[0]
-                    all_boxes[class_idx][image_idx] = all_boxes[class_idx][image_idx][keep, :]
-        nms_time = _t['misc'].toc()
+                # Only keep max_per_image detections with highest scores
+                if len(image_scores) > max_per_image:
+                    image_thresh = np.sort(image_scores)[-max_per_image]
+                    for class_idx in range(1, imdb.num_classes):
+                        keep = np.where(
+                            all_boxes[class_idx][image_idx][:, -1] >= image_thresh)[0]
+                        all_boxes[class_idx][image_idx] = all_boxes[class_idx][image_idx][keep, :]
+            nms_time = _t['misc'].toc()
 
-        if image_idx % 20 == 0:
-            print('im_detect: {:d}/{:d} {:.3f}s \
-                  {:.3f}s'.format(image_idx + 1, num_images, detect_time, nms_time))
-            _t['im_detect'].clear()
-            _t['misc'].clear()
+            if image_idx % 20 == 0:
+                print('im_detect: {:d}/{:d} {:.3f}s \
+                      {:.3f}s'.format(image_idx + 1, num_images, detect_time, nms_time))
+                _t['im_detect'].clear()
+                _t['misc'].clear()
 
-        if vis:
-            im2show = yolo_utils.draw_detection(ori_im, bboxes, scores,
-                                                cls_inds, cfg, thr=0.1)
-            if im2show.shape[0] > 1100:
-                final_size = (int(1000. * float(im2show.shape[1]) /
-                                  im2show.shape[0]), 1000)
-                im2show = cv2.resize(im2show, final_size)
-            cv2.imshow('test', im2show)
-            cv2.waitKey(0)
-    precision, recall = class_AP(imdb, all_boxes, class_name=imdb._classes[0], iou_thres=0.1)
-
+            if vis:
+                im2show = yolo_utils.draw_detection(ori_im, bboxes, scores,
+                                                    cls_inds, cfg, thr=0.1)
+                if im2show.shape[0] > 1100:
+                    final_size = (int(1000. * float(im2show.shape[1]) /
+                                      im2show.shape[0]), 1000)
+                    im2show = cv2.resize(im2show, final_size)
+                cv2.imshow('test', im2show)
+                cv2.waitKey(0)
 
     with open(det_file, 'wb') as f:
         pickle.dump(all_boxes, f, pickle.HIGHEST_PROTOCOL)
+
+    class_name = 'car'
+    annopath = os.path.join(imdb._devkit_path,
+                            'VOC' + imdb._year,
+                            'Annotations',
+                            '{:s}.xml')
+    imagesetfile = os.path.join(
+        imdb._devkit_path,
+        'VOC' + imdb._year,
+        'ImageSets',
+        'Main',
+        imdb._image_set + '.txt')
+    filename = imdb._get_voc_results_file_template().format(class_name)
+
+    cachedir = os.path.join(imdb._devkit_path, 'annotations_cache')
+    voc_rec, voc_prec, ap = voc_eval(
+        filename, annopath, imagesetfile, class_name,
+        cachedir, ovthresh=0.5,
+        use_07_metric=imdb.use_07_metric)
+    import pdb; pdb.set_trace()
+
+    # My AP implementation
+    precision, recall = class_AP(imdb, all_boxes,
+                                 class_name=class_name, iou_thres=0.5)
+    ap = voc_ap(recall, precision, use_07_metric=False)
+    print('ap {} for class {}'.format(ap, class_name))
 
     print('Evaluating detections')
     imdb.evaluate_detections(all_boxes, output_dir)
@@ -145,7 +176,8 @@ if __name__ == '__main__':
     elif cfg.dataset_name == 'voc':
         imdb = VOCDataset(imdb_name, cfg.DATA_DIR, cfg.batch_size,
                           yolo_utils.preprocess_test, processes=2,
-                          shuffle=False, dst_size=cfg.inp_size)
+                          shuffle=False, dst_size=cfg.inp_size,
+                          use_07_metric=False, use_cache=False)
 
     else:
         raise ValueError('dataset name {} \
@@ -158,6 +190,6 @@ if __name__ == '__main__':
     net.cuda()
     net.eval()
 
-    test_net(net, imdb, max_per_image, thresh, vis)
+    test_net(net, imdb, max_per_image, thresh, vis, use_cache=True)
 
     imdb.close()

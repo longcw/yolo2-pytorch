@@ -27,7 +27,6 @@ def parse_rec(filename):
                               int(bbox.find('xmax').text),
                               int(bbox.find('ymax').text)]
         objects.append(obj_struct)
-
     return objects
 
 
@@ -71,7 +70,8 @@ def voc_eval(detpath,
              classname,
              cachedir,
              ovthresh=0.5,
-             use_07_metric=False):
+             use_07_metric=False,
+             use_cache=False):
     """rec, prec, ap = voc_eval(detpath,
                                 annopath,
                                 imagesetfile,
@@ -106,14 +106,14 @@ def voc_eval(detpath,
         lines = f.readlines()
     imagenames = [x.strip() for x in lines]
 
-    if not os.path.isfile(cachefile):
+    if not os.path.isfile(cachefile) or not use_cache:
         # load annots
         recs = {}
         for i, imagename in enumerate(imagenames):
             recs[imagename] = parse_rec(annopath.format(imagename))
-            if i % 100 == 0:
-                print('Reading annotation for {:d}/{:d}'.format(
-                    i + 1, len(imagenames)))
+            # if i % 100 == 0:
+            #    print('Reading annotation for {:d}/{:d}'.format(
+            #        i + 1, len(imagenames)))
         # save
         print('Saving cached annotations to {:s}'.format(cachefile))
         with open(cachefile, 'wb') as f:
@@ -131,7 +131,7 @@ def voc_eval(detpath,
         bbox = np.array([x['bbox'] for x in R])
         difficult = np.array([x['difficult'] for x in R]).astype(np.bool)
         det = [False] * len(R)
-        npos = npos + sum(~difficult)
+        npos = npos + len(bbox)
         class_recs[imagename] = {'bbox': bbox,
                                  'difficult': difficult,
                                  'det': det}
@@ -185,20 +185,20 @@ def voc_eval(detpath,
                 jmax = np.argmax(overlap_ratios)
 
             if max_overlap > ovthresh:
-                if not R['difficult'][jmax]:
-                    if not R['det'][jmax]:
-                        # Here image_idx matches a given (image, bbox) detection
-                        true_positives[image_idx] = 1.
-                        R['det'][jmax] = 1
-                    else:
-                        false_positives[image_idx] = 1.
+                # if not R['difficult'][jmax]:
+                if not R['det'][jmax]:
+                    # Here image_idx matches a given (image, bbox) detection
+                    true_positives[image_idx] = 1.
+                    R['det'][jmax] = 1
+                else:
+                    false_positives[image_idx] = 1.
             else:
                 false_positives[image_idx] = 1.
 
         # compute precision recall
         cumul_false_positives = np.cumsum(false_positives)
         cumul_true_positives = np.cumsum(true_positives)
-        recall = true_positives / float(npos)
+        recall = cumul_true_positives / float(npos)
         # avoid divide by zero in case the first detection matches a difficult
         # ground truth
         prec = cumul_true_positives / np.maximum(cumul_true_positives +

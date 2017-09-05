@@ -15,11 +15,16 @@ from .voc_eval import voc_eval
 
 
 class VOCDataset(ImageDataset):
-    def __init__(self, imdb_name, datadir, batch_size, im_processor, processes=3, shuffle=True, dst_size=None):
+    def __init__(self, imdb_name, datadir, batch_size,
+                 im_processor, processes=3, shuffle=True, dst_size=None,
+                 use_cache=False, use_07_metric=False):
         super(VOCDataset, self).__init__(imdb_name, datadir, batch_size, im_processor, processes, shuffle, dst_size)
         meta = imdb_name.split('_')
         self._year = meta[1]
         self._image_set = meta[2]
+
+        self.use_07_metric = use_07_metric  # Overrides chosen metric
+        self.use_cache = use_cache
         self._devkit_path = os.path.join(datadir, 'VOCdevkit{}'.format(self._year))
         self._data_path = os.path.join(self._devkit_path, 'VOC{}'.format(self._year))
         assert os.path.exists(self._devkit_path), 'VOCdevkit path does not exist: {}'.format(self._devkit_path)
@@ -38,7 +43,7 @@ class VOCDataset(ImageDataset):
 
         # PASCAL specific config options
         self.config = {'cleanup': True,
-                       'use_salt': True}
+                       'use_salt': False}
 
         self.load_dataset()
         # self.im_processor = partial(process_im, image_names=self._image_names, annotations=self._annotations)
@@ -65,8 +70,8 @@ class VOCDataset(ImageDataset):
             for cls in self._classes:
                 if cls == '__background__':
                     continue
-                filename = self._get_voc_results_file_template().format(cls)
-                os.remove(filename)
+                # filename = self._get_voc_results_file_template().format(cls)
+                # os.remove(filename)
 
     # -------------------------------------------------------------
     def image_path_from_index(self, index):
@@ -97,10 +102,10 @@ class VOCDataset(ImageDataset):
         """
         Return the database of ground-truth regions of interest.
 
-        This function loads/saves from/to a cache file to speed up future calls.
+        This function loads/saves from/to a cache file to speed up future calls
         """
         cache_file = os.path.join(self.cache_path, self.name + '_gt_roidb.pkl')
-        if os.path.exists(cache_file):
+        if os.path.exists(cache_file) and self.use_cache:
             with open(cache_file, 'rb') as fid:
                 roidb = pickle.load(fid)
             print('{} gt roidb loaded from {}'.format(self.name, cache_file))
@@ -210,16 +215,18 @@ class VOCDataset(ImageDataset):
         aps = []
         # The PASCAL VOC metric changed in 2010
         use_07_metric = True if int(self._year) < 2010 else False
-        print('VOC07 metric? ' + ('Yes' if use_07_metric else 'No'))
+        self.use_07_metric = self.use_07_metric if self.use_07_metric is not None else use_07_metric
+        print('VOC07 metric? ' + ('Yes' if self.use_07_metric else 'No'))
         if output_dir is not None and not os.path.isdir(output_dir):
             os.mkdir(output_dir)
         for i, cls in enumerate(self._classes):
             if cls == '__background__':
                 continue
             filename = self._get_voc_results_file_template().format(cls)
+            print(filename)
             rec, prec, ap = voc_eval(
                 filename, annopath, imagesetfile, cls, cachedir, ovthresh=0.5,
-                use_07_metric=use_07_metric)
+                use_07_metric=self.use_07_metric)
             aps += [ap]
             print('AP for {} = {:.4f}'.format(cls, ap))
             if output_dir is not None:

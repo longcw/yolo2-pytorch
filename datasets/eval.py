@@ -23,13 +23,13 @@ def iou(gt_box, pred_box):
     inter_ymin = max(gt_ymin, pred_ymin)
 
     # Computer area of intersection
-    x_inter_length = max(inter_xmax - inter_xmin, 0)
-    y_inter_length = max(inter_ymax - inter_ymin, 0)
+    x_inter_length = max(inter_xmax - inter_xmin + 1, 0)
+    y_inter_length = max(inter_ymax - inter_ymin + 1, 0)
     inter_area = x_inter_length * y_inter_length
 
     # Compute area of union
-    gt_area = (gt_xmax - gt_xmin) * (gt_ymax - gt_ymin)
-    pred_area = (pred_xmax - pred_xmin) * (pred_ymax - pred_ymin)
+    gt_area = (gt_xmax - gt_xmin + 1) * (gt_ymax - gt_ymin + 1)
+    pred_area = (pred_xmax - pred_xmin + 1) * (pred_ymax - pred_ymin + 1)
     union_area = pred_area + gt_area - inter_area
     return inter_area / union_area
 
@@ -51,6 +51,12 @@ def class_AP(dataset, all_boxes, class_name, iou_thres=0.5):
             precision
         iou_thres(float): minimum iou score for a bounding box to be considered
             as a valid detection
+
+    Returns:
+        precision(list): precision (tp/(tp + fp))scores when positive threshold
+            is of decreasing confidence
+        recall(list): recall (tp/p) scores when positive threshold is of
+            decreasing confidence
     """
     class_idx = dataset.classes.index(class_name)
     class_box_infos = all_boxes[class_idx]
@@ -61,9 +67,6 @@ def class_AP(dataset, all_boxes, class_name, iou_thres=0.5):
     class_bboxes = [class_box_info[:, 0:4]
                     for class_box_info in class_box_infos]
 
-    total_true_pos = 0
-    total_false_positives = 0
-    total_false_negatives = 0
     true_positive_conf = []
     false_positive_conf = []
     positive_count = 0
@@ -78,14 +81,10 @@ def class_AP(dataset, all_boxes, class_name, iou_thres=0.5):
         confidences = confidences[sorted_idxs]
         bboxes = bboxes[sorted_idxs]
 
-        # go down detections and mark TPs and FPs
         detected_ids = []  # keeps track of already detected gt bboxes
 
         # Ground truth information for image
         gt_detections = dataset.annotations[image_idx]['boxes']
-
-        # Count total number of ground truth positive bounding boxes
-        print('bounding box nb : ', len(gt_detections))
 
         # Only focus on ground truth samples of the given class
         gt_classes = dataset.annotations[image_idx]['gt_classes']
@@ -94,6 +93,7 @@ def class_AP(dataset, all_boxes, class_name, iou_thres=0.5):
         # Count total number of positive detections
         positive_count += len(gt_detections)
 
+        # Go down sorted detections and mark TPs and FPs
         for conf, bbox in zip(confidences, bboxes):
             detections = []
             # Find best detection in ground truth
@@ -101,24 +101,26 @@ def class_AP(dataset, all_boxes, class_name, iou_thres=0.5):
                 if gt_idx not in detected_ids:
                     bbox_iou = iou(gt_bbox, bbox)
                     if bbox_iou > iou_thres:
+                        # Bounding boxes that match iou criterion
                         detections.append((gt_idx, bbox_iou))
             if len(detections) > 0:
-                total_true_pos += 1
                 true_positive_conf.append((1, conf))
                 false_positive_conf.append((0, conf))
                 gt_best_detect_id = max(detections, key=itemgetter(1))[0]
                 detected_ids.append(gt_best_detect_id)
             else:
-                total_false_positives += 1
                 false_positive_conf.append((1, conf))
                 true_positive_conf.append((0, conf))
-        total_false_negatives += len(gt_detections) - len(detected_ids)
 
-    # List true positives and false positives by increasing confidence
-    true_pos_conf_sort = sorted(true_positive_conf, key=itemgetter(1))
-    true_pos_sort = [flag for flag, conf in true_pos_conf_sort]
-    false_pos_conf_sort = sorted(false_positive_conf, key=itemgetter(1))
+    # List true positives and false positives by decreasing confidence
+    true_pos_conf_sort = sorted(true_positive_conf, key=itemgetter(1),
+                                reverse=True)
+    false_pos_conf_sort = sorted(false_positive_conf, key=itemgetter(1),
+                                 reverse=True)
+
+    # Extract tp and fp values for decreasing confidence
     false_pos_sort = [flag for flag, conf in false_pos_conf_sort]
+    true_pos_sort = [flag for flag, conf in true_pos_conf_sort]
 
     cum_true_pos = np.cumsum(true_pos_sort)
     cum_false_pos = np.cumsum(false_pos_sort)
