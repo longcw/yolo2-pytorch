@@ -1,8 +1,12 @@
 import os
+import pickle
+
 import cv2
 import torch
+from torch.utils.data import DataLoader
+from torch.autograd import Variable
+from torchvision import transforms
 import numpy as np
-import pickle
 
 from darknet import Darknet19
 import utils.yolo as yolo_utils
@@ -16,6 +20,7 @@ import cfgs.config as cfg
 
 from datasets.voc_eval import voc_ap, voc_eval
 from matplotlib import pyplot as plt
+
 
 def preprocess(fname):
     # return fname
@@ -38,11 +43,12 @@ output_dir = cfg.test_output_dir
 
 max_per_image = 300
 thresh = 0.01
-vis = False
+vis = True
 
 
-def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False, use_cache=False):
-    num_images = imdb.num_images
+def test_net(net, dataloader, max_per_image=300, thresh=0.5, vis=False, use_cache=False):
+
+    num_images = len(dataloader.dataset)
 
     # all detections are collected into:
     #    all_boxes[cls][image] = N x 5 array of detections in
@@ -58,15 +64,13 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False, use_cache=Fals
         with open(det_file, 'rb') as f:
             all_boxes = pickle.load(f)
     else:
-        for image_idx in range(num_images):
-
-            batch = imdb.next_batch()
-            ori_im = batch['origin_im'][0]
-            im_data = net_utils.np_to_variable(
-                batch['images'], is_cuda=True, volatile=True).permute(0, 3, 1, 2)
+        for image_idx, (img, targets) in enumerate(dataloader):
+            ori_im = img
+            im_var = Variable(img.type(torch.FloatTensor))
+            im_var = im_var.cuda()
 
             _t['im_detect'].tic()
-            bbox_pred, iou_pred, prob_pred = net(im_data)
+            bbox_pred, iou_pred, prob_pred = net(im_var)
 
             # to numpy
             bbox_pred = bbox_pred.data.cpu().numpy()
@@ -74,7 +78,7 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False, use_cache=Fals
             prob_pred = prob_pred.data.cpu().numpy()
 
             bboxes, scores, cls_inds = yolo_utils.postprocess(
-                bbox_pred, iou_pred, prob_pred, ori_im.shape, cfg, thresh)
+                bbox_pred, iou_pred, prob_pred, (ori_im.shape[2], ori_im.shape[3]), cfg, thresh)
             detect_time = _t['im_detect'].toc()
 
             _t['misc'].tic()
@@ -100,7 +104,8 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False, use_cache=Fals
             # Limit to max_per_image detections *over all classes*
             if max_per_image > 0:
                 image_scores = np.hstack([all_boxes[class_idx][image_idx][:, -1]
-                                          for class_idx in range(imdb.num_classes)])
+                                          for class_idx
+                                          in range(dataloader.dataset.num_classes)])
 
                 # Only keep max_per_image detections with highest scores
                 if len(image_scores) > max_per_image:
@@ -118,6 +123,7 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False, use_cache=Fals
                 _t['misc'].clear()
 
             if vis:
+                import pdb; pdb.set_trace()
                 im2show = yolo_utils.draw_detection(ori_im, bboxes, scores,
                                                     cls_inds, cfg, thr=0.1)
                 if im2show.shape[0] > 1100:
@@ -138,12 +144,17 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False, use_cache=Fals
     ap = voc_ap(recall, precision, use_07_metric=False)
     print('ap {} for class {}'.format(ap, class_name))
 
+
 if __name__ == '__main__':
+
+    # Create test transforms
+    test_transform = transforms.Compose([
+        transforms.Scale(cfg.inp_size),
+        transforms.ToTensor()])
+
     # data loader
     if cfg.dataset_name == 'lisa':
-        imdb = LISADataset('train', cfg.DATA_DIR, cfg.batch_size,
-                           yolo_utils.preprocess_test, processes=2,
-                           shuffle=False, dst_size=cfg.inp_size,
+        imdb = LISADataset('train', cfg.DATA_DIR, transform=test_transform,
                            use_cache=False)
     elif cfg.dataset_name == 'egohands':
         imdb = EgoHandDataset('test', cfg.DATA_DIR, cfg.batch_size,
@@ -161,6 +172,9 @@ if __name__ == '__main__':
         raise ValueError('dataset name {} \
                          not recognized'.format(cfg.dataset_name))
     print('load data succ...')
+    # TODO add rescaling transform to cfg.inp_size
+    dataloader = DataLoader(imdb, shuffle=False, batch_size=cfg.batch_size,
+                            num_workers=2)
 
     net = Darknet19()
     net_utils.load_net(trained_model, net)
@@ -168,6 +182,6 @@ if __name__ == '__main__':
     net.cuda()
     net.eval()
 
-    test_net(net, imdb, max_per_image, thresh, vis, use_cache=False)
+    test_net(net, dataloader, max_per_image, thresh, vis, use_cache=False)
 
     imdb.close()

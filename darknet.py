@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import utils.network as net_utils
 from cfgs import config as cfg
 from layers.reorg.reorg_layer import ReorgLayer
-from utils.cython_bbox import bbox_ious, bbox_intersections, bbox_overlaps, anchor_intersections
+from utils.cython_bbox import bbox_ious, anchor_intersections
 from utils.cython_yolo import yolo_to_bbox
 
 from multiprocessing import Pool

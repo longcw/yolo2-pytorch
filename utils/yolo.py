@@ -200,18 +200,22 @@ def draw_detection(im, bboxes, scores, cls_inds, cfg, thr=0.3):
     colors = cfg.colors
     labels = cfg.label_names
 
-    imgcv = np.copy(im)
-    h, w, _ = imgcv.shape
+    imgcv = im[0].numpy()
+    imgcv = np.moveaxis(imgcv, 0, 2)
+    imgcv = imgcv[:, :, ::-1]
+
+    _, h, w, = im.shape[1:4]
     for i, box in enumerate(bboxes):
         if scores[i] < thr:
             continue
         cls_indx = cls_inds[i]
 
         thick = int((h + w) / 300)
-        cv2.rectangle(imgcv,
+        # import pdb; pdb.set_trace()
+        cv2.rectangle(imgcv.copy(),
                       (box[0], box[1]), (box[2], box[3]),
                       colors[cls_indx], thick)
         mess = '%s: %.3f' % (labels[cls_indx], scores[i])
-        cv2.putText(imgcv, mess, (box[0], box[1] - 12),
+        cv2.putText(imgcv.copy(), mess, (box[0], box[1] - 12),
                     0, 1e-3 * h, colors[cls_indx], thick // 3)
     return imgcv
