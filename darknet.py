@@ -40,8 +40,6 @@ def _process_batch(data):
     out_size = cfg.out_size
 
     bbox_pred_np, gt_boxes, gt_classes, dontcares, iou_pred_np = data
-    gt_boxes = gt_boxes.numpy()
-    gt_classes = gt_classes.numpy()
 
     # net output
     hw, num_anchors, _ = bbox_pred_np.shape

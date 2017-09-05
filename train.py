@@ -29,22 +29,39 @@ test_transform = transforms.Compose([
     transforms.Scale(cfg.inp_size),
     transforms.ToTensor()])
 
+
+def collate_img(data_list):
+    imgs = [data_item[0] for data_item in data_list]
+    imgs = torch.stack(imgs, 0)
+    origin_imgs = [data_item[1] for data_item in data_list]
+    targets = {}
+    targets['boxes'] = [data_item[2]['boxes'] for data_item in data_list]
+    targets['gt_classes'] = [data_item[2]['gt_classes']
+                             for data_item in data_list]
+    return imgs, origin_imgs, targets
+
+# train_batch_size = cfg.train_batch_size
+train_batch_size = 16
+
 # Initialize dataset
 if cfg.dataset_name == 'lisa':
     imdb = LISADataset('train', cfg.DATA_DIR, transform=test_transform,
                        use_cache=False)
 elif cfg.dataset_name == 'egohands':
     imdb = EgoHandDataset('train', cfg.DATA_DIR, cfg.train_batch_size,
-                          yolo_utils.preprocess_train, processes=1,
+                          yolo_utils.preprocess_train, processes=2,
                           shuffle=True, dst_size=cfg.inp_size,
                           differentiate_left_right=cfg.differentiate_left_right)
 else:
     raise ValueError('dataset name {} not recognized'.format(cfg.dataset_name))
 print('load data succ...')
 
+batch_per_epoch = int(len(imdb) / train_batch_size)
+
 # Initialize dataloader
-dataloader = DataLoader(imdb, shuffle=True, batch_size=cfg.batch_size,
-                        num_workers=2)
+print(cfg.train_batch_size)
+dataloader = DataLoader(imdb, shuffle=True, batch_size=train_batch_size,
+                        num_workers=0, collate_fn=collate_img)
 
 # Initialize network
 net = Darknet19()
@@ -70,7 +87,6 @@ count = 0
 t = Timer()
 step_count = 0
 
-batch_per_epoch = int(len(imdb) / cfg.batch_size)
 
 for epoch in range(cfg.max_epoch):
     for step, (img, original_img, targets) in enumerate(dataloader):
