@@ -43,10 +43,11 @@ output_dir = cfg.test_output_dir
 
 max_per_image = 300
 thresh = 0.01
-vis = True
+vis = False
 
 
-def test_net(net, dataloader, max_per_image=300, thresh=0.5, vis=False, use_cache=False):
+def test_net(net, dataloader, max_per_image=300, thresh=0.5,
+             vis=False, use_cache=False):
 
     num_images = len(dataloader.dataset)
 
@@ -64,10 +65,13 @@ def test_net(net, dataloader, max_per_image=300, thresh=0.5, vis=False, use_cach
         with open(det_file, 'rb') as f:
             all_boxes = pickle.load(f)
     else:
-        for image_idx, (img, targets) in enumerate(dataloader):
-            ori_im = img
+        for image_idx, (img, original_img, targets) in enumerate(dataloader):
             im_var = Variable(img.type(torch.FloatTensor))
             im_var = im_var.cuda()
+
+            # Convert PIL image to cv2 numpy array
+            original_img = original_img[0].numpy()
+            original_img = original_img[:, :, ::-1].copy()
 
             _t['im_detect'].tic()
             bbox_pred, iou_pred, prob_pred = net(im_var)
@@ -78,7 +82,7 @@ def test_net(net, dataloader, max_per_image=300, thresh=0.5, vis=False, use_cach
             prob_pred = prob_pred.data.cpu().numpy()
 
             bboxes, scores, cls_inds = yolo_utils.postprocess(
-                bbox_pred, iou_pred, prob_pred, (ori_im.shape[2], ori_im.shape[3]), cfg, thresh)
+                bbox_pred, iou_pred, prob_pred, original_img.shape[0:2], cfg, thresh)
             detect_time = _t['im_detect'].toc()
 
             _t['misc'].tic()
@@ -118,14 +122,15 @@ def test_net(net, dataloader, max_per_image=300, thresh=0.5, vis=False, use_cach
 
             if image_idx % 20 == 0:
                 print('im_detect: {:d}/{:d} {:.3f}s \
-                      {:.3f}s'.format(image_idx + 1, num_images, detect_time, nms_time))
+                      {:.3f}s'.format(image_idx + 1, num_images,
+                                      detect_time, nms_time))
                 _t['im_detect'].clear()
                 _t['misc'].clear()
 
             if vis:
-                import pdb; pdb.set_trace()
-                im2show = yolo_utils.draw_detection(ori_im, bboxes, scores,
-                                                    cls_inds, cfg, thr=0.1)
+                im2show = yolo_utils.draw_detection(original_img, bboxes,
+                                                    scores, cls_inds,
+                                                    cfg, thr=0.5)
                 if im2show.shape[0] > 1100:
                     final_size = (int(1000. * float(im2show.shape[1]) /
                                       im2show.shape[0]), 1000)
@@ -183,5 +188,3 @@ if __name__ == '__main__':
     net.eval()
 
     test_net(net, dataloader, max_per_image, thresh, vis, use_cache=False)
-
-    imdb.close()

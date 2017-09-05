@@ -80,14 +80,11 @@ class LISADataset(Dataset):
     def __getitem__(self, idx):
         annotations = self.annotations[idx]
         image_path = self.image_names[idx]
-        # img = cv2.imread(image_path)
-        # img = cv2.resize(img, (416, 416))
-        # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        # img = img / 255
         img = Image.open(image_path)
+        original_img = np.array(img)
         if self.transform is not None:
             img = self.transform(img)
-        return img, annotations
+        return img, original_img, annotations
 
     def __len__(self):
         return self.sample_nb

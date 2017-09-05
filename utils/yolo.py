@@ -168,14 +168,6 @@ def _bbox_targets_perimage(im_shape, gt_boxes, cls_inds, dontcare_areas, cfg):
     cell_inds = np.floor(cy) * W + np.floor(cx)
     cell_inds = cell_inds.astype(np.int)
 
-    # [x1, y1, x2, y2],  [class]
-    # gt_boxes[:, 0::2] /= im_shape[1]
-    # gt_boxes[:, 1::2] /= im_shape[0]
-    # gt_boxes[:, 0] = cx - np.floor(cx)
-    # gt_boxes[:, 1] = cy - np.floor(cy)
-    # gt_boxes[:, 2] = (gt_boxes[:, 2] - gt_boxes[:, 0]) / im_shape[1]
-    # gt_boxes[:, 3] = (gt_boxes[:, 3] - gt_boxes[:, 1]) / im_shape[0]
-
     bbox_target = [[] for _ in range(H * W)]
     cls_target = [[] for _ in range(H * W)]
     for i, ind in enumerate(cell_inds):
@@ -195,27 +187,31 @@ def get_bbox_targets(images, gt_boxes, cls_inds, dontcares, cfg):
     return bbox_targets, cls_targets
 
 
-def draw_detection(im, bboxes, scores, cls_inds, cfg, thr=0.3):
-    # draw image
+def draw_detection(imgcv, bboxes, scores, cls_inds, cfg, thr=0.3):
+    """
+    Draws bboxes on imgcv if scores above thr
+
+    Args:
+        imgcv(numpy.ndarray): input image with shape (height, width, channels)
+        bboxes(numpy.ndarray): bboxes as rows (scaled to match imgcv shape)
+    """
     colors = cfg.colors
     labels = cfg.label_names
 
-    imgcv = im[0].numpy()
-    imgcv = np.moveaxis(imgcv, 0, 2)
-    imgcv = imgcv[:, :, ::-1]
+    imgcv = imgcv.copy()
 
-    _, h, w, = im.shape[1:4]
+    h, w, _ = imgcv.shape
+
+    # Draw boxes and labels on image
     for i, box in enumerate(bboxes):
         if scores[i] < thr:
             continue
         cls_indx = cls_inds[i]
 
         thick = int((h + w) / 300)
-        # import pdb; pdb.set_trace()
-        cv2.rectangle(imgcv.copy(),
-                      (box[0], box[1]), (box[2], box[3]),
+        cv2.rectangle(imgcv, (box[0], box[1]), (box[2], box[3]),
                       colors[cls_indx], thick)
         mess = '%s: %.3f' % (labels[cls_indx], scores[i])
-        cv2.putText(imgcv.copy(), mess, (box[0], box[1] - 12),
+        cv2.putText(imgcv, mess, (box[0], box[1] - 12),
                     0, 1e-3 * h, colors[cls_indx], thick // 3)
     return imgcv
