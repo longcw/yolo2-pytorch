@@ -31,9 +31,9 @@ imdb_name = cfg.imdb_test
 print('dataset name', imdb_name)
 # trained_model = cfg.trained_model
 # trained_model = os.path.join(cfg.train_output_dir, 'darknet19_egohands_debug_6.h5')
-trained_model = 'models/training/darknet19_egohands_exp1/darknet19_egohands_exp1_5.h5'
-trained_model = 'models/training/darknet19_lisa_exp1/darknet19_lisa_exp1_20.h5'
 trained_model = 'models/yolo-voc.weights.h5'
+trained_model = 'models/training/darknet19_lisa_exp1/darknet19_lisa_exp1_20.h5'
+trained_model = 'models/training/darknet19_egohands_exp1/darknet19_egohands_exp1_5.h5'
 output_dir = cfg.test_output_dir
 
 max_per_image = 300
@@ -130,35 +130,13 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False, use_cache=Fals
     with open(det_file, 'wb') as f:
         pickle.dump(all_boxes, f, pickle.HIGHEST_PROTOCOL)
 
-    class_name = 'car'
-    annopath = os.path.join(imdb._devkit_path,
-                            'VOC' + imdb._year,
-                            'Annotations',
-                            '{:s}.xml')
-    imagesetfile = os.path.join(
-        imdb._devkit_path,
-        'VOC' + imdb._year,
-        'ImageSets',
-        'Main',
-        imdb._image_set + '.txt')
-    filename = imdb._get_voc_results_file_template().format(class_name)
+    class_name = 'hand'
 
-    cachedir = os.path.join(imdb._devkit_path, 'annotations_cache')
-    voc_rec, voc_prec, ap = voc_eval(
-        filename, annopath, imagesetfile, class_name,
-        cachedir, ovthresh=0.5,
-        use_07_metric=imdb.use_07_metric)
-    import pdb; pdb.set_trace()
-
-    # My AP implementation
+    # Compute class Average Precision
     precision, recall = class_AP(imdb, all_boxes,
                                  class_name=class_name, iou_thres=0.5)
     ap = voc_ap(recall, precision, use_07_metric=False)
     print('ap {} for class {}'.format(ap, class_name))
-
-    print('Evaluating detections')
-    imdb.evaluate_detections(all_boxes, output_dir)
-
 
 if __name__ == '__main__':
     # data loader
@@ -190,6 +168,6 @@ if __name__ == '__main__':
     net.cuda()
     net.eval()
 
-    test_net(net, imdb, max_per_image, thresh, vis, use_cache=True)
+    test_net(net, imdb, max_per_image, thresh, vis, use_cache=False)
 
     imdb.close()
