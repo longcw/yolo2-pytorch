@@ -40,6 +40,8 @@ def _process_batch(data):
     out_size = cfg.out_size
 
     bbox_pred_np, gt_boxes, gt_classes, dontcares, iou_pred_np = data
+    gt_boxes = gt_boxes.numpy()
+    gt_classes = gt_classes.numpy()
 
     # net output
     hw, num_anchors, _ = bbox_pred_np.shape
@@ -110,7 +112,6 @@ def _process_batch(data):
     ious_reshaped = np.reshape(ious, [hw, num_anchors, len(cell_inds)])
     for i, cell_ind in enumerate(cell_inds):
         if cell_ind >= hw or cell_ind < 0:
-            print(cell_ind)
             continue
         a = anchor_inds[i]
 
@@ -250,6 +251,8 @@ class Darknet19(nn.Module):
 
         bsize = bbox_pred_np.shape[0]
 
+        if dontcare is None:
+            dontcare = [None] * bsize
         targets = self.pool.map(_process_batch, ((bbox_pred_np[b], gt_boxes[b],
                                                   gt_classes[b], dontcare[b],
                                                   iou_pred_np[b])

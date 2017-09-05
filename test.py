@@ -66,15 +66,15 @@ def test_net(net, dataloader, max_per_image=300, thresh=0.5,
             all_boxes = pickle.load(f)
     else:
         for image_idx, (img, original_img, targets) in enumerate(dataloader):
-            im_var = Variable(img.type(torch.FloatTensor))
-            im_var = im_var.cuda()
+            img_var = Variable(img.type(torch.FloatTensor))
+            img_var = img_var.cuda()
 
             # Convert PIL image to cv2 numpy array
             original_img = original_img[0].numpy()
             original_img = original_img[:, :, ::-1].copy()
 
             _t['im_detect'].tic()
-            bbox_pred, iou_pred, prob_pred = net(im_var)
+            bbox_pred, iou_pred, prob_pred = net(img_var)
 
             # to numpy
             bbox_pred = bbox_pred.data.cpu().numpy()
@@ -157,9 +157,9 @@ if __name__ == '__main__':
         transforms.Scale(cfg.inp_size),
         transforms.ToTensor()])
 
-    # data loader
+    # Initialize dataset
     if cfg.dataset_name == 'lisa':
-        imdb = LISADataset('train', cfg.DATA_DIR, transform=test_transform,
+        imdb = LISADataset('test', cfg.DATA_DIR, transform=test_transform,
                            use_cache=False)
     elif cfg.dataset_name == 'egohands':
         imdb = EgoHandDataset('test', cfg.DATA_DIR, cfg.batch_size,
@@ -177,10 +177,12 @@ if __name__ == '__main__':
         raise ValueError('dataset name {} \
                          not recognized'.format(cfg.dataset_name))
     print('load data succ...')
-    # TODO add rescaling transform to cfg.inp_size
+
+    # Initialize dataloader
     dataloader = DataLoader(imdb, shuffle=False, batch_size=cfg.batch_size,
                             num_workers=2)
 
+    # Initialize network
     net = Darknet19()
     net_utils.load_net(trained_model, net)
 
