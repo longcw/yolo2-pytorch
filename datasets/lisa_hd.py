@@ -1,30 +1,38 @@
-import pickle
+import copy
 import os
+import pickle
 
-import cv2
 import numpy as np
 from PIL import Image
 from torch.utils.data import Dataset
 
 
+from datasets.utils.augmentation import data_augmentation
 from datasets.utils import filesys
 
 
 class LISADataset(Dataset):
     def __init__(self, split, datadir, transform=None,
+                 transform_params=None,
                  use_cache=False):
         """
         Args:
             split(str): either test or train
+            transform: transform to apply to image after joint
+                transformations have been applied
+            transform_params(dict): dictionnary containing the params
+                for data augmentation with keys {'scale', 'hue', 'jitter',
+                'exposure', 'saturation'}
         """
         super(LISADataset, self).__init__()
         self.split = split
         self.use_cache = use_cache
         self.transform = transform
+        self.transform_params = transform_params
 
         # Set usefull paths for given split
         self._data_dir = datadir
-        self.name = 'lisa'
+        self.name = 'lisa' + split
         self._data_path = os.path.join(datadir, 'LISA_HD')
         self._split_path = os.path.join(self._data_path, split)
         self._img_folder = os.path.join(self._split_path, 'pos')
@@ -78,10 +86,23 @@ class LISADataset(Dataset):
         return gt_roidb
 
     def __getitem__(self, idx):
-        annotations = self.annotations[idx]
+        annotations = copy.deepcopy(self.annotations[idx])
         image_path = self.image_names[idx]
         img = Image.open(image_path)
         original_img = np.array(img)
+
+        # Target/img joint transforms
+        final_shape = self.transform_params['shape']
+        jitter = self.transform_params['jitter']
+        hue = self.transform_params['hue']
+        saturation = self.transform_params['saturation']
+        exposure = self.transform_params['exposure']
+
+        img, gt_boxes = data_augmentation(img, annotations['boxes'].copy(),
+                                          final_shape, jitter, hue,
+                                          saturation, exposure)
+        annotations['boxes'] = gt_boxes
+
         if self.transform is not None:
             img = self.transform(img)
         return img, original_img, annotations

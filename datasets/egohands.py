@@ -1,33 +1,41 @@
-import pickle
+import copy
 import os
+import pickle
 
 import numpy as np
-import scipy.sparse
+from PIL import Image
 import scipy.io as sio
-
-# from functools import partial
-
-from .imdb import ImageDataset
-from .voc_eval import voc_eval
-# from utils.yolo import preprocess_train
+from torch.utils.data import Dataset
 
 
-class EgoHandDataset(ImageDataset):
-    def __init__(self, split, datadir, batch_size, im_processor,
-                 processes=3, shuffle=True, dst_size=None,
-                 differentiate_left_right=True, use_cache=False):
+from datasets.utils.augmentation import data_augmentation
+from datasets.utils import filesys
+
+
+class EgoHandDataset(Dataset):
+    def __init__(self, split, datadir, transform,
+                 transform_params=None,
+                 use_cache=False, left_and_right=False):
         """
         Args:
             split(str): either test or train
         """
-        super(EgoHandDataset, self).__init__('EgoHand' + split, datadir,
-                                             batch_size, im_processor,
-                                             processes, shuffle,
-                                             dst_size)
+        super(EgoHandDataset, self).__init__()
         self.split = split
         self.use_cache = use_cache
+        self.transform = transform
+        self.transform_params = transform_params
+
+        self.left_and_right = left_and_right
+        if self.left_and_right:
+            self.classes = [('left_hand'), ('right_hand')]
+        else:
+            self.classes = [('hand')]
+        self.num_classes = len(self.classes)
 
         # Set usefull paths for given split
+        self._data_dir = datadir
+        self.name = 'egohands' + split
         self._data_path = os.path.join(datadir, 'egohands')
         self._video_path = os.path.join(self._data_path, '_LABELLED_SAMPLES')
         self._annot_path = os.path.join(self._data_path, 'metadata.mat')
@@ -37,16 +45,35 @@ class EgoHandDataset(ImageDataset):
             self._annot_path), 'Path does not exist:\
             {}'.format(self._annot_path)
 
-        self.differentiate_left_right = differentiate_left_right
-        if self.differentiate_left_right:
-            self._classes = [('left_hand'), ('right_hand')]
-        else:
-            self._classes = [('hand')]
         self._class_to_ind = dict(zip(self.classes, range(self.num_classes)))
         self.video_nb = 48
         self.frame_nb = 100  # labelled frames per video
 
         self.load_dataset()
+        self.num_samples = len(self.image_names)
+
+    def __len__(self):
+        return self.num_samples
+
+    def __getitem__(self, idx):
+        annotations = copy.deepcopy(self.annotations[idx])
+        image_path = self.image_names[idx]
+        img = Image.open(image_path)
+        original_img = np.array(img)
+
+        # Data augmentation for image
+        final_shape = self.transform_params['shape']
+        jitter = self.transform_params['jitter']
+        hue = self.transform_params['hue']
+        saturation = self.transform_params['saturation']
+        exposure = self.transform_params['exposure']
+        img, annotations['boxes'] = data_augmentation(img,
+                                                      annotations['boxes'].copy(),
+                                                      final_shape, jitter, hue,
+                                                      saturation, exposure)
+        if self.transform is not None:
+            img = self.transform(img)
+        return img, original_img, annotations
 
     def get_image_path(self, video_idx, frame_idx,
                        img_file_template='frame_{frame:04d}.jpg'):
@@ -71,34 +98,15 @@ class EgoHandDataset(ImageDataset):
         self.video_ids = [str(nd_video_ids[0, i][0])
                           for i in range(self.video_nb)]
 
-        # set self._image_index and self._annotations
         self.idx_tuples = [(video_idx, video_frame)
                            for video_idx in range(self.video_nb)
                            for video_frame in range(self.frame_nb)]
-        self._image_indexes = range(len(self.idx_tuples))
+        self.image_indexes = range(len(self.idx_tuples))
 
         img_paths = [self.get_image_path(video_idx, frame_idx)
                      for video_idx, frame_idx in self.idx_tuples]
-        self._image_names = img_paths
-        self._annotations = self._load_annotations()
-
-    def evaluate_detections(self, all_boxes, output_dir=None):
-        """
-        all_boxes is a list of length number-of-classes.
-        Each list element is a list of length number-of-images.
-        Each of those list elements is either an empty list []
-        or a numpy array of detection.
-
-        all_boxes[class][image] = [] or np.array of shape #dets x 5
-        """
-        self._write_voc_results_file(all_boxes)
-        self._do_python_eval(output_dir)
-        if self.config['cleanup']:
-            for cls in self._classes:
-                if cls == '__background__':
-                    continue
-                filename = self._get_voc_results_file_template().format(cls)
-                os.remove(filename)
+        self.image_names = img_paths
+        self.annotations = self._load_annotations()
 
     def _load_annotations(self):
         """
@@ -129,31 +137,10 @@ class EgoHandDataset(ImageDataset):
         """
         video_idx, frame_idx = self.idx_tuples[index]
         bboxes, gt_classes = self.get_frame_annots(video_idx, frame_idx)
-        num_objs = bboxes.shape[0]
-
-        # if not self.differentiate_left_right:
-        # Keep only one class for hands, zero labels for all
-        #   gt_classes = np.zeros((num_objs), dtype=np.int32)
-        overlaps = np.zeros((num_objs, self.num_classes), dtype=np.float32)
-        # "Seg" area for pascal is just the box area
-        seg_areas = np.zeros((num_objs), dtype=np.float32)
-        ishards = np.zeros((num_objs), dtype=np.int32)
-
-        # Load object bounding boxes into a data frame.
-        for ix, row in enumerate(bboxes):
-            cls_idx = gt_classes[ix]
-            # Obtain max abs and ord from mins, weidth and height
-            overlaps[ix, cls_idx] = 1.0
-            seg_areas[ix] = (row[3] - row[1] + 1) * (row[2] - row[0] + 1)
-
-        overlaps = scipy.sparse.csr_matrix(overlaps)
 
         return {'boxes': bboxes,
                 'gt_classes': gt_classes,
-                'gt_ishard': ishards,
-                'gt_overlaps': overlaps,
-                'flipped': False,
-                'seg_areas': seg_areas}
+                'flipped': False}
 
     def get_frame_annots(self, video_idx, frame_idx):
         """Gets frame bounding boxes and left/right hand labels
@@ -211,7 +198,7 @@ class EgoHandDataset(ImageDataset):
 
             # Set labels to 0 for left, 1 for right or 0 for all if no side
             # differentiation
-            if self.differentiate_left_right:
+            if self.left_and_right:
                 labels = np.array(left_labels + right_labels)
             else:
                 labels = np.zeros(len(bboxes)).astype(int)
@@ -219,82 +206,8 @@ class EgoHandDataset(ImageDataset):
                 should match bbox count'.format(len(labels), len(bboxes))
         return np_bboxes, labels
 
-    def _get_voc_results_file_template(self):
-        # VOCdevkit/results/VOC2007/Main/<comp_id>_det_test_aeroplane.txt
-        filename = self._get_comp_id() + '_det_' + \
-            self._image_set + '_{:s}.txt'
-        filedir = os.path.join(
-            self._devkit_path, 'results', 'VOC' + self._year, 'Main')
-        if not os.path.exists(filedir):
-            os.makedirs(filedir)
-        path = os.path.join(filedir, filename)
-        return path
-
-    def _write_voc_results_file(self, all_boxes):
-        for cls_idx, cls in enumerate(self.classes):
-            if cls == '__background__':
-                continue
-            print('Writing {} VOC results file'.format(cls))
-            filename = self._get_voc_results_file_template().format(cls)
-            with open(filename, 'wt') as f:
-                for im_ind, index in enumerate(self.image_indexes):
-                    dets = all_boxes[cls_idx][im_ind]
-                    if dets == []:
-                        continue
-                    # the VOCdevkit expects 1-based indices
-                    for k in range(dets.shape[0]):
-                        f.write('{:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.
-                                format(index, dets[k, -1],
-                                       dets[k, 0] + 1, dets[k, 1] + 1,
-                                       dets[k, 2] + 1, dets[k, 3] + 1))
-
-    def _do_python_eval(self, output_dir='output'):
-        annopath = os.path.join(
-            self._devkit_path,
-            'VOC' + self._year,
-            'Annotations',
-            '{:s}.xml')
-        imagesetfile = os.path.join(
-            self._devkit_path,
-            'VOC' + self._year,
-            'ImageSets',
-            'Main',
-            self._image_set + '.txt')
-        cachedir = os.path.join(self._devkit_path, 'annotations_cache')
-        aps = []
-        # The PASCAL VOC metric changed in 2010
-        use_07_metric = True if int(self._year) < 2010 else False
-        print('VOC07 metric? ' + ('Yes' if use_07_metric else 'No'))
-        if output_dir is not None and not os.path.isdir(output_dir):
-            os.mkdir(output_dir)
-        for i, cls in enumerate(self._classes):
-            if cls == '__background__':
-                continue
-            filename = self._get_voc_results_file_template().format(cls)
-            rec, prec, ap = voc_eval(
-                filename, annopath, imagesetfile, cls, cachedir, ovthresh=0.5,
-                use_07_metric=use_07_metric)
-            aps += [ap]
-            print('AP for {} = {:.4f}'.format(cls, ap))
-            if output_dir is not None:
-                with open(os.path.join(output_dir, cls + '_pr.pkl'), 'wb') as f:
-                    pickle.dump({'rec': rec, 'prec': prec, 'ap': ap}, f)
-        print('Mean AP = {:.4f}'.format(np.mean(aps)))
-        print('~~~~~~~~')
-        print('Results:')
-        for ap in aps:
-            print('{:.3f}'.format(ap))
-        print('{:.3f}'.format(np.mean(aps)))
-        print('~~~~~~~~')
-        print('')
-        print('--------------------------------------------------------------')
-        print('Results computed with the **unofficial** Python eval code.')
-        print('Results should be very close to the official MATLAB eval code.')
-        print('Recompute with `./tools/reval.py --matlab ...` for your paper.')
-        print('-- Thanks, The Management')
-        print('--------------------------------------------------------------')
-
-    def _get_comp_id(self):
-        comp_id = (self._comp_id + '_' + self._salt if self.config['use_salt']
-                   else self._comp_id)
-        return comp_id
+    @property
+    def cache_path(self):
+        cache_path = os.path.join(self._data_dir, 'cache')
+        filesys.mkdir(cache_path)
+        return cache_path
