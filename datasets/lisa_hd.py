@@ -92,16 +92,17 @@ class LISADataset(Dataset):
         original_img = np.array(img)
 
         # Target/img joint transforms
-        final_shape = self.transform_params['shape']
-        jitter = self.transform_params['jitter']
-        hue = self.transform_params['hue']
-        saturation = self.transform_params['saturation']
-        exposure = self.transform_params['exposure']
+        if self.transform_params is not None:
+            final_shape = self.transform_params['shape']
+            jitter = self.transform_params['jitter']
+            hue = self.transform_params['hue']
+            saturation = self.transform_params['saturation']
+            exposure = self.transform_params['exposure']
 
-        img, gt_boxes = data_augmentation(img, annotations['boxes'].copy(),
-                                          final_shape, jitter, hue,
-                                          saturation, exposure)
-        annotations['boxes'] = gt_boxes
+            img, gt_boxes = data_augmentation(img, annotations['boxes'].copy(),
+                                              final_shape, jitter, hue,
+                                              saturation, exposure)
+            annotations['boxes'] = gt_boxes
 
         if self.transform is not None:
             img = self.transform(img)

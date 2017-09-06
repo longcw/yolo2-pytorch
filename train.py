@@ -3,6 +3,7 @@ import torch
 import datetime
 from torch.multiprocessing import Pool
 from torch.utils.data import DataLoader
+from torch.utils.data.dataset import ConcatDataset
 from torch.autograd import Variable
 from torchvision import transforms
 
@@ -19,7 +20,9 @@ try:
 except ImportError:
     CrayonClient = None
 
+use_pretrained = True
 
+# Prepare transforms
 train_transform = transforms.ToTensor()
 
 transform_params = {
@@ -41,39 +44,60 @@ def collate_img(data_list):
     return imgs, origin_imgs, targets
 
 
-# train_batch_size = cfg.train_batch_size
-train_batch_size = 16
+train_batch_size = cfg.train_batch_size
+
+# Load needed datasets
+if cfg.dataset_name == 'lisa' or cfg.dataset_name == 'all':
+    lisa_dataset = LISADataset('train', cfg.DATA_DIR,
+                               transform=train_transform,
+                               transform_params=transform_params,
+                               use_cache=False)
+if cfg.dataset_name == 'egohands' or cfg.dataset_name == 'all':
+    ego_dataset = EgoHandDataset('train', cfg.DATA_DIR,
+                                 transform=train_transform,
+                                 transform_params=transform_params,
+                                 use_cache=False)
 
 # Initialize dataset
-if cfg.dataset_name == 'lisa':
-    imdb = LISADataset('train', cfg.DATA_DIR, transform=train_transform,
-                       transform_params=transform_params, use_cache=False)
+if cfg.dataset_name == 'all':
+    dataset = ConcatDataset([lisa_dataset, ego_dataset])
+elif cfg.dataset_name == 'lisa':
+    dataset = lisa_dataset
 elif cfg.dataset_name == 'egohands':
-    imdb = EgoHandDataset('train', cfg.DATA_DIR, transform=train_transform,
-                          transform_params=transform_params, use_cache=False)
+    dataset = ego_dataset
 else:
     raise ValueError('dataset name {} not recognized'.format(cfg.dataset_name))
+
 print('load data succ...')
 
-batch_per_epoch = int(len(imdb) / train_batch_size)
+batch_per_epoch = int(len(dataset) / train_batch_size)
 
 # Initialize dataloader
-dataloader = DataLoader(imdb, shuffle=True, batch_size=train_batch_size,
+dataloader = DataLoader(dataset, shuffle=True, batch_size=train_batch_size,
                         num_workers=0, collate_fn=collate_img)
 
 # Initialize network
 net = Darknet19()
-# net_utils.load_net(cfg.trained_model, net)
-# pretrained_model = os.path.join(cfg.train_output_dir, 'darknet19_voc07trainval_exp1_63.h5')
-# pretrained_model = cfg.trained_model
-# net_utils.load_net(pretrained_model, net)
-net.load_from_npz(cfg.pretrained_model, num_conv=18)
+
+# Load weights
+if use_pretrained:
+    # Load pretrained model
+    net.load_from_npz(cfg.pretrained_model, num_conv=18)
+
+# Load previously trained model
+saved_model = 'models/training/darknet19_all_exp1/darknet19_all_exp1_2.h5'
+if saved_model is not None:
+    start_epoch = int(saved_model[-4]) + 1
+else:
+    start_epoch = 0
+
+net_utils.load_net(saved_model, net)
+
 net.cuda()
 net.train()
 print('load net succ...')
 
 # optimizer
-start_epoch = 0
 lr = cfg.init_learning_rate
 optimizer = torch.optim.SGD(net.parameters(), lr=lr,
                             momentum=cfg.momentum,
@@ -84,7 +108,8 @@ bbox_loss, iou_loss, cls_loss = 0., 0., 0.
 count = 0
 t = Timer()
 
-for epoch in range(cfg.max_epoch):
+for epoch in range(start_epoch, cfg.max_epoch):
+    print('starting epoch {}'.format(epoch))
     for step, (img, original_img, targets) in enumerate(dataloader):
         t.tic()
         gt_boxes = targets['boxes']

@@ -62,15 +62,16 @@ class EgoHandDataset(Dataset):
         original_img = np.array(img)
 
         # Data augmentation for image
-        final_shape = self.transform_params['shape']
-        jitter = self.transform_params['jitter']
-        hue = self.transform_params['hue']
-        saturation = self.transform_params['saturation']
-        exposure = self.transform_params['exposure']
-        img, annotations['boxes'] = data_augmentation(img,
-                                                      annotations['boxes'].copy(),
-                                                      final_shape, jitter, hue,
-                                                      saturation, exposure)
+        if self.transform_params is not None:
+            final_shape = self.transform_params['shape']
+            jitter = self.transform_params['jitter']
+            hue = self.transform_params['hue']
+            saturation = self.transform_params['saturation']
+            exposure = self.transform_params['exposure']
+            img, annotations['boxes'] = data_augmentation(img,
+                                                          annotations['boxes'].copy(),
+                                                          final_shape, jitter, hue,
+                                                          saturation, exposure)
         if self.transform is not None:
             img = self.transform(img)
         return img, original_img, annotations

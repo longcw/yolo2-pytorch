@@ -23,14 +23,6 @@ from datasets.utils.augmentation import data_augmentation
 from matplotlib import pyplot as plt
 
 
-def preprocess(fname):
-    # return fname
-    image = cv2.imread(fname)
-    im_data = np.expand_dims(
-        yolo_utils.preprocess_test(image, cfg.inp_size), 0)
-    return image, im_data
-
-
 # hyper-parameters
 # ------------
 imdb_name = cfg.imdb_test
@@ -160,13 +152,10 @@ if __name__ == '__main__':
 
     # Initialize dataset
     if cfg.dataset_name == 'lisa':
-        imdb = LISADataset('test', cfg.DATA_DIR, transform=test_transform,
+        imdb = LISADataset('train', cfg.DATA_DIR, transform=test_transform,
                            use_cache=False)
     elif cfg.dataset_name == 'egohands':
-        imdb = EgoHandDataset('test', cfg.DATA_DIR, cfg.batch_size,
-                              yolo_utils.preprocess_test, processes=2,
-                              shuffle=False, dst_size=cfg.inp_size,
-                              differentiate_left_right=False,
+        imdb = EgoHandDataset('test', cfg.DATA_DIR, transform=test_transform,
                               use_cache=False)
     elif cfg.dataset_name == 'voc':
         imdb = VOCDataset(imdb_name, cfg.DATA_DIR, cfg.batch_size,
