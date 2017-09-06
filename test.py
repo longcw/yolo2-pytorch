@@ -19,6 +19,7 @@ from datasets.pascal_voc import VOCDataset
 import cfgs.config as cfg
 
 from datasets.voc_eval import voc_ap, voc_eval
+from datasets.utils.augmentation import data_augmentation
 from matplotlib import pyplot as plt
 
 
