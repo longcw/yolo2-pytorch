@@ -5,10 +5,10 @@ import numpy as np
 from operator import itemgetter
 
 
-def plot_bboxes(img, bboxes):
+def plot_bboxes(img, bboxes, scores=None):
     fig, ax = plt.subplots(1)
     ax.imshow(img)
-    for row in bboxes:
+    for i, row in enumerate(bboxes):
         xy = (row[0], row[1])
         w = row[2] - row[0]
         h = row[3] - row[1]
@@ -16,6 +16,8 @@ def plot_bboxes(img, bboxes):
                                    edgecolor='r',
                                    linewidth=1, facecolor='None')
         ax.add_patch(detection_rect)
+        ax.text(xy[0], xy[1] - 2, 'hand : {:.3f}'.format(scores[i][0]),
+                color='red')
     plt.show()
 
 

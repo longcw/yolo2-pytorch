@@ -53,7 +53,9 @@ def test_net(net, dataset, transform=None, max_per_image=300, thresh=0.5,
                 # Create class detections in format
                 # [[x_min, y_min, x_max, y_max, score], ...]
                 if vis:
-                    plot_bboxes(original_img, class_bboxes)
+                    plot_bboxes(original_img, class_bboxes,
+                                class_scores)
+
 
 
 if __name__ == "__main__":
@@ -68,7 +70,7 @@ if __name__ == "__main__":
         transforms.ToTensor()])
 
     # Initialise network
-    trained_model = 'models/training/darknet19_all_exp1/darknet19_all_exp1_2.h5'
+    trained_model = 'models/training/darknet19_all_exp1/darknet19_all_exp1_64.h5'
     net = Darknet19()
     net_utils.load_net(trained_model, net)
     net.cuda()
