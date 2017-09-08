@@ -9,6 +9,7 @@ from tqdm import tqdm
 import cfgs.config as cfg
 from darknet import Darknet19
 from datasets.gteagazeplusimage import GTEAGazePlusImage
+from datasets.smthgimage import SmthgImage
 from datasets.utils.visualize import plot_bboxes
 import utils.network as net_utils
 import utils.yolo as yolo_utils
@@ -44,11 +45,10 @@ def get_crop_params(bbox, img_shape, increase_ratio=2.2):
 
 
 def test_net(net, dataset, transform=None, max_per_image=300, thresh=0.5,
-             num_classes=1, vis=False):
+             num_classes=1, vis=False, crop_folder=None):
 
     # Initialize counter for number of cropped hands
     extracted_hands = 0
-    crop_folder = 'results/crops'
 
     # Run through dataset
     for i, (img, annots) in tqdm(enumerate(dataset)):
@@ -89,41 +89,47 @@ def test_net(net, dataset, transform=None, max_per_image=300, thresh=0.5,
                 if vis:
                     plot_bboxes(np_original_img, class_bboxes,
                                 class_scores)
-                for i, bbox in enumerate(class_bboxes):
-                    crop_success, crop_params = get_crop_params(bbox,
-                                                                (original_img.width,
-                                                                 original_img.height))
-                    if crop_success:
-                        crop = original_img.crop((crop_params))
-                        crop_name = 'rendered_{:03d}.jpg'.format(
-                            extracted_hands)
-                        crop = crop.resize((368, 368))
-                        # if bbox[2] - bbox[0] > 100 and bbox[3] - bbox[1] > 100:
+
+                # Save crops to (368x368) images
+                if crop_folder is not None:
+                    for i, bbox in enumerate(class_bboxes):
+                        crop_success, crop_params = get_crop_params(bbox,
+                                                                    (original_img.width,
+                                                                     original_img.height))
+                        if crop_success:
+                            crop = original_img.crop((crop_params))
+                            crop_name = 'rendered_{:03d}.jpg'.format(
+                                extracted_hands)
+                            crop = crop.resize((368, 368))
+                            # if bbox[2] - bbox[0] > 100 and bbox[3] - bbox[1] > 100:
                             # Mirror left hands
-                        if cls_inds[i] == 0:
-                            crop = crop.transpose(Image.FLIP_LEFT_RIGHT)
-                        print('saving image')
-                        crop.save(os.path.join(crop_folder, crop_name))
-                        extracted_hands += 1
+                            if cls_inds[i] == 0:
+                                crop = crop.transpose(Image.FLIP_LEFT_RIGHT)
+                            print('saving image')
+                            crop.save(os.path.join(crop_folder, crop_name))
+                            extracted_hands += 1
 
 
 if __name__ == "__main__":
-    vis = False
+    vis = True
+    crop_folder = 'results/crops'
 
     # Initialize dataset
-    dataset = GTEAGazePlusImage()
+    # dataset = GTEAGazePlusImage()
+    dataset = SmthgImage()
 
-# Initialize test image transform
-test_transform = transforms.Compose([
-    transforms.Scale(cfg.inp_size),
-    transforms.ToTensor()])
+    # Initialize test image transform
+    test_transform = transforms.Compose([
+        transforms.Scale(cfg.inp_size),
+        transforms.ToTensor()])
 
-# Initialise network
-trained_model = 'models/training/darknet19_all_exp1/darknet19_all_exp1_64.h5'
-net = Darknet19()
-net_utils.load_net(trained_model, net)
-net.cuda()
-net.eval()
+    # Initialise network
+    trained_model = 'models/training/darknet19_all_exp1/darknet19_all_exp1_64.h5'
+    net = Darknet19()
+    net_utils.load_net(trained_model, net)
+    net.cuda()
+    net.eval()
 
-# Extract bounding boxes
-test_net(net, dataset, transform=test_transform, vis=vis, thresh=0.6)
+    # Extract bounding boxes
+    test_net(net, dataset, transform=test_transform, vis=vis, thresh=0.5,
+             crop_folder=None)
