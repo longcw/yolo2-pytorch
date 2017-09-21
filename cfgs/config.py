@@ -3,13 +3,17 @@
 # dataset_name = "egohands"
 
 
-# from cfgs.config_lisa_full import *
+from cfgs.config_lisa_full import *
 
-# dataset_name = "lisa"
+dataset_name = "lisa"
 
-from cfgs.config_all_full import *
+# from cfgs.config_synthetic_full import *
 
-dataset_name = "all"
+# dataset_name = "synthetic"
+
+# from cfgs.config_all_full import *
+
+# dataset_name = "all"
 
 # VOC dataset
 

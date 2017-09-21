@@ -12,6 +12,7 @@ from darknet import Darknet19
 from cfgs import config as cfg
 from datasets.lisa_hd import LISADataset
 from datasets.egohands import EgoHandDataset
+from datasets.synthetic import SyntheticDataset
 import utils.network as net_utils
 from utils.timer import Timer
 
@@ -53,22 +54,29 @@ if cfg.dataset_name == 'lisa' or cfg.dataset_name == 'all':
                                transform_params=transform_params,
                                use_cache=False)
 if cfg.dataset_name == 'egohands' or cfg.dataset_name == 'all':
-    ego_dataset = EgoHandDataset('train', cfg.DATA_DIR,
+    synth_dataset = EgoHandDataset('train', cfg.DATA_DIR,
+                                   transform=train_transform,
+                                   transform_params=transform_params,
+                                   use_cache=False)
+if cfg.dataset_name == 'synthetic' or cfg.dataset_name == 'all':
+    ego_dataset = SyntheticDataset(cfg.DATA_DIR,
                                  transform=train_transform,
                                  transform_params=transform_params,
                                  use_cache=False)
 
 # Initialize dataset
 if cfg.dataset_name == 'all':
-    dataset = ConcatDataset([lisa_dataset, ego_dataset])
+    dataset = ConcatDataset([lisa_dataset, ego_dataset, synth_dataset])
 elif cfg.dataset_name == 'lisa':
     dataset = lisa_dataset
 elif cfg.dataset_name == 'egohands':
     dataset = ego_dataset
+elif cfg.dataset_name == 'synthetic':
+    dataset = synth_dataset
 else:
     raise ValueError('dataset name {} not recognized'.format(cfg.dataset_name))
 
-print('load data succ...')
+print('Loaded {} samples for training'.format(len(dataset)))
 
 batch_per_epoch = int(len(dataset) / train_batch_size)
 
@@ -85,13 +93,14 @@ if use_pretrained:
     net.load_from_npz(cfg.pretrained_model, num_conv=18)
 
 # Load previously trained model
-saved_model = 'models/training/darknet19_all_exp1/darknet19_all_exp1_2.h5'
+# saved_model = 'models/training/darknet19_all_exp1/darknet19_all_exp1_20.h5'
+saved_model = None
 if saved_model is not None:
     start_epoch = int(saved_model[-4]) + 1
+    net_utils.load_net(saved_model, net)
 else:
     start_epoch = 0
 
-net_utils.load_net(saved_model, net)
 
 net.cuda()
 net.train()

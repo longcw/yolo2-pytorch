@@ -15,6 +15,7 @@ from utils.timer import Timer
 from datasets.eval import class_AP
 from datasets.lisa_hd import LISADataset
 from datasets.egohands import EgoHandDataset
+from datasets.synthetic import SyntheticDataset
 from datasets.pascal_voc import VOCDataset
 import cfgs.config as cfg
 
@@ -29,14 +30,16 @@ imdb_name = cfg.imdb_test
 print('dataset name', imdb_name)
 # trained_model = cfg.trained_model
 # trained_model = os.path.join(cfg.train_output_dir, 'darknet19_egohands_debug_6.h5')
-trained_model = 'models/yolo-voc.weights.h5'
-trained_model = 'models/training/darknet19_lisa_exp1/darknet19_lisa_exp1_20.h5'
-trained_model = 'models/training/darknet19_egohands_exp1/darknet19_egohands_exp1_5.h5'
+# trained_model = 'models/yolo-voc.weights.h5'
+# trained_model = 'models/training/darknet19_lisa_exp1/darknet19_lisa_exp1_20.h5'
+# trained_model = 'models/training/darknet19_egohands_exp1/darknet19_egohands_exp1_5.h5'
+trained_model = 'models/training/darknet19_all_exp1/darknet19_all_exp1_15.h5'
+
 output_dir = cfg.test_output_dir
 
 max_per_image = 300
 thresh = 0.01
-vis = False
+vis = True
 
 
 def test_net(net, dataloader, max_per_image=300, thresh=0.5,
@@ -157,6 +160,9 @@ if __name__ == '__main__':
     elif cfg.dataset_name == 'egohands':
         imdb = EgoHandDataset('test', cfg.DATA_DIR, transform=test_transform,
                               use_cache=False)
+    elif cfg.dataset_name == 'synthetic':
+        imdb = SyntheticDataset(cfg.DATA_DIR, transform=test_transform,
+                                use_cache=False)
     elif cfg.dataset_name == 'voc':
         imdb = VOCDataset(imdb_name, cfg.DATA_DIR, cfg.batch_size,
                           yolo_utils.preprocess_test, processes=2,

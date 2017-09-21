@@ -87,8 +87,9 @@ def test_net(net, dataset, transform=None, max_per_image=300, thresh=0.5,
                 # Create class detections in format
                 # [[x_min, y_min, x_max, y_max, score], ...]
                 if vis:
-                    plot_bboxes(np_original_img, class_bboxes,
+                    fig = plot_bboxes(np_original_img, class_bboxes,
                                 class_scores)
+                    fig.savefig('bboxes_{:03}.jpg'.format(i), bbox_inches='tight')
 
                 # Save crops to (368x368) images
                 if crop_folder is not None:
@@ -115,8 +116,8 @@ if __name__ == "__main__":
     crop_folder = 'results/crops'
 
     # Initialize dataset
-    # dataset = GTEAGazePlusImage()
-    dataset = SmthgImage()
+    dataset = GTEAGazePlusImage()
+    # dataset = SmthgImage()
 
     # Initialize test image transform
     test_transform = transforms.Compose([
@@ -124,7 +125,9 @@ if __name__ == "__main__":
         transforms.ToTensor()])
 
     # Initialise network
-    trained_model = 'models/training/darknet19_all_exp1/darknet19_all_exp1_64.h5'
+    # trained_model = 'models/training/darknet19_all_exp1/darknet19_all_exp1_64.h5'
+    trained_model = 'models/training/darknet19_all_exp1/darknet19_all_exp1_15.h5'
+
     net = Darknet19()
     net_utils.load_net(trained_model, net)
     net.cuda()

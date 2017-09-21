@@ -19,6 +19,7 @@ def plot_bboxes(img, bboxes, scores=None):
         ax.text(xy[0], xy[1] - 2, 'hand : {:.3f}'.format(scores[i][0]),
                 color='red')
     plt.show()
+    return fig
 
 
 def plot_hist(labels, proportion=True):
