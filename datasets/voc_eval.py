@@ -6,7 +6,7 @@
 
 import xml.etree.ElementTree as ET
 import os
-import cPickle
+import pickle
 import numpy as np
 import pdb
 
@@ -27,12 +27,11 @@ def parse_rec(filename):
                               int(bbox.find('xmax').text),
                               int(bbox.find('ymax').text)]
         objects.append(obj_struct)
-
     return objects
 
 
-def voc_ap(rec, prec, use_07_metric=False):
-    """ ap = voc_ap(rec, prec, [use_07_metric])
+def voc_ap(recall, prec, use_07_metric=False):
+    """ ap = voc_ap(recall, prec, [use_07_metric])
     Compute VOC AP given precision and recall.
     If use_07_metric is true, uses the
     VOC 07 11 point method (default:False).
@@ -41,15 +40,15 @@ def voc_ap(rec, prec, use_07_metric=False):
         # 11 point metric
         ap = 0.
         for t in np.arange(0., 1.1, 0.1):
-            if np.sum(rec >= t) == 0:
+            if np.sum(recall >= t) == 0:
                 p = 0
             else:
-                p = np.max(prec[rec >= t])
+                p = np.max(prec[recall >= t])
             ap = ap + p / 11.
     else:
         # correct AP calculation
         # first append sentinel values at the end
-        mrec = np.concatenate(([0.], rec, [1.]))
+        mrec = np.concatenate(([0.], recall, [1.]))
         mpre = np.concatenate(([0.], prec, [0.]))
 
         # compute the precision envelope
@@ -64,13 +63,15 @@ def voc_ap(rec, prec, use_07_metric=False):
         ap = np.sum((mrec[i + 1] - mrec[i]) * mpre[i + 1])
     return ap
 
+
 def voc_eval(detpath,
              annopath,
              imagesetfile,
              classname,
              cachedir,
              ovthresh=0.5,
-             use_07_metric=False):
+             use_07_metric=False,
+             use_cache=False):
     """rec, prec, ap = voc_eval(detpath,
                                 annopath,
                                 imagesetfile,
@@ -96,7 +97,7 @@ def voc_eval(detpath,
     # assumes imagesetfile is a text file with each line an image name
     # cachedir caches the annotations in a pickle file
 
-    # first load gt
+    # Load ground truth annotations
     if not os.path.isdir(cachedir):
         os.mkdir(cachedir)
     cachefile = os.path.join(cachedir, 'annots.pkl')
@@ -105,22 +106,22 @@ def voc_eval(detpath,
         lines = f.readlines()
     imagenames = [x.strip() for x in lines]
 
-    if not os.path.isfile(cachefile):
+    if not os.path.isfile(cachefile) or not use_cache:
         # load annots
         recs = {}
         for i, imagename in enumerate(imagenames):
             recs[imagename] = parse_rec(annopath.format(imagename))
-            if i % 100 == 0:
-                print 'Reading annotation for {:d}/{:d}'.format(
-                    i + 1, len(imagenames))
+            # if i % 100 == 0:
+            #    print('Reading annotation for {:d}/{:d}'.format(
+            #        i + 1, len(imagenames)))
         # save
-        print 'Saving cached annotations to {:s}'.format(cachefile)
-        with open(cachefile, 'w') as f:
-            cPickle.dump(recs, f)
+        print('Saving cached annotations to {:s}'.format(cachefile))
+        with open(cachefile, 'wb') as f:
+            pickle.dump(recs, f)
     else:
         # load
-        with open(cachefile, 'r') as f:
-            recs = cPickle.load(f)
+        with open(cachefile, 'rb') as f:
+            recs = pickle.load(f)
 
     # extract gt objects for this class
     class_recs = {}
@@ -130,7 +131,7 @@ def voc_eval(detpath,
         bbox = np.array([x['bbox'] for x in R])
         difficult = np.array([x['difficult'] for x in R]).astype(np.bool)
         det = [False] * len(R)
-        npos = npos + sum(~difficult)
+        npos = npos + len(bbox)
         class_recs[imagename] = {'bbox': bbox,
                                  'difficult': difficult,
                                  'det': det}
@@ -140,11 +141,10 @@ def voc_eval(detpath,
     with open(detfile, 'r') as f:
         lines = f.readlines()
     if any(lines) == 1:
-
-        splitlines = [x.strip().split(' ') for x in lines]
-        image_ids = [x[0] for x in splitlines]
-        confidence = np.array([float(x[1]) for x in splitlines])
-        BB = np.array([[float(z) for z in x[2:]] for x in splitlines])
+        splitlines = [line.strip().split(' ') for line in lines]
+        image_ids = [line[0] for line in splitlines]
+        confidence = np.array([float(line[1]) for line in splitlines])
+        BB = np.array([[float(z) for z in line[2:]] for line in splitlines])
 
         # sort by confidence
         sorted_ind = np.argsort(-confidence)
@@ -152,57 +152,62 @@ def voc_eval(detpath,
         BB = BB[sorted_ind, :]
         image_ids = [image_ids[x] for x in sorted_ind]
 
-        # go down dets and mark TPs and FPs
-        nd = len(image_ids)
-        tp = np.zeros(nd)
-        fp = np.zeros(nd)
-        for d in range(nd):
-            R = class_recs[image_ids[d]]
-            bb = BB[d, :].astype(float)
-            ovmax = -np.inf
+        # go down detections and mark TPs and FPs
+        image_nb = len(image_ids)
+        true_positives = np.zeros(image_nb)
+        false_positives = np.zeros(image_nb)
+        for image_idx in range(image_nb):
+            R = class_recs[image_ids[image_idx]]
+            bb = BB[image_idx, :].astype(float)
+            max_overlap = -np.inf
             BBGT = R['bbox'].astype(float)
 
+            # Compute intersection over union area
             if BBGT.size > 0:
-                # compute overlaps
-                # intersection
-                ixmin = np.maximum(BBGT[:, 0], bb[0])
-                iymin = np.maximum(BBGT[:, 1], bb[1])
-                ixmax = np.minimum(BBGT[:, 2], bb[2])
-                iymax = np.minimum(BBGT[:, 3], bb[3])
-                iw = np.maximum(ixmax - ixmin + 1., 0.)
-                ih = np.maximum(iymax - iymin + 1., 0.)
-                inters = iw * ih
+                # Compute intersection bounding box
+                inter_xmin = np.maximum(BBGT[:, 0], bb[0])
+                inter_ymin = np.maximum(BBGT[:, 1], bb[1])
+                inter_xmax = np.minimum(BBGT[:, 2], bb[2])
+                inter_ymax = np.minimum(BBGT[:, 3], bb[3])
 
-                # union
-                uni = ((bb[2] - bb[0] + 1.) * (bb[3] - bb[1] + 1.) +
-                       (BBGT[:, 2] - BBGT[:, 0] + 1.) *
-                       (BBGT[:, 3] - BBGT[:, 1] + 1.) - inters)
+                # Compute intersection area
+                inter_width = np.maximum(inter_xmax - inter_xmin + 1., 0.)
+                inter_height = np.maximum(inter_ymax - inter_ymin + 1., 0.)
+                inter_area = inter_width * inter_height
 
-                overlaps = inters / uni
-                ovmax = np.max(overlaps)
-                jmax = np.argmax(overlaps)
+                # Compute union area
+                union_area = ((bb[2] - bb[0] + 1.) * (bb[3] - bb[1] + 1.) +
+                              (BBGT[:, 2] - BBGT[:, 0] + 1.) *
+                              (BBGT[:, 3] - BBGT[:, 1] + 1.) - inter_area)
 
-            if ovmax > ovthresh:
-                if not R['difficult'][jmax]:
-                    if not R['det'][jmax]:
-                        tp[d] = 1.
-                        R['det'][jmax] = 1
-                    else:
-                        fp[d] = 1.
+                overlap_ratios = inter_area / union_area
+                max_overlap = np.max(overlap_ratios)
+                jmax = np.argmax(overlap_ratios)
+
+            if max_overlap > ovthresh:
+                # if not R['difficult'][jmax]:
+                if not R['det'][jmax]:
+                    # Here image_idx matches a given (image, bbox) detection
+                    true_positives[image_idx] = 1.
+                    R['det'][jmax] = 1
+                else:
+                    false_positives[image_idx] = 1.
             else:
-                fp[d] = 1.
+                false_positives[image_idx] = 1.
 
         # compute precision recall
-        fp = np.cumsum(fp)
-        tp = np.cumsum(tp)
-        rec = tp / float(npos)
+        cumul_false_positives = np.cumsum(false_positives)
+        cumul_true_positives = np.cumsum(true_positives)
+        recall = cumul_true_positives / float(npos)
         # avoid divide by zero in case the first detection matches a difficult
         # ground truth
-        prec = tp / np.maximum(tp + fp, np.finfo(np.float64).eps)
-        ap = voc_ap(rec, prec, use_07_metric)
+        prec = cumul_true_positives / np.maximum(cumul_true_positives +
+                                                 cumul_false_positives,
+                                                 np.finfo(np.float64).eps)
+        ap = voc_ap(recall, prec, use_07_metric)
     else:
-         rec = -1
-         prec = -1
-         ap = -1
+        recall = -1
+        prec = -1
+        ap = -1
 
-    return rec, prec, ap
+    return recall, prec, ap

@@ -7,14 +7,15 @@ from multiprocessing import Pool
 def mkdir(path, max_depth=3):
     parent, child = os.path.split(path)
     if not os.path.exists(parent) and max_depth > 1:
-        mkdir(parent, max_depth-1)
+        mkdir(parent, max_depth - 1)
 
     if not os.path.exists(path):
         os.mkdir(path)
 
 
 class ImageDataset(object):
-    def __init__(self, name, datadir, batch_size, im_processor, processes=3, shuffle=True, dst_size=None):
+    def __init__(self, name, datadir, batch_size, im_processor, processes=3,
+                 shuffle=True, dst_size=None):
         self._name = name
         self._data_dir = datadir
         self._batch_size = batch_size
@@ -39,23 +40,26 @@ class ImageDataset(object):
         self._im_processor = im_processor
 
     def next_batch(self):
-        batch = {'images': [], 'gt_boxes': [], 'gt_classes': [], 'dontcare': [], 'origin_im': []}
+        batch = {'images': [], 'gt_boxes': [],
+                 'gt_classes': [], 'dontcare': [], 'origin_im': []}
         i = 0
         while i < self.batch_size:
             try:
-                images, gt_boxes, classes, dontcare, origin_im = self.gen.next()
+                images, gt_boxes, classes, dontcare, origin_im = next(self.gen)
                 batch['images'].append(images)
                 batch['gt_boxes'].append(gt_boxes)
                 batch['gt_classes'].append(classes)
                 batch['dontcare'].append(dontcare)
                 batch['origin_im'].append(origin_im)
                 i += 1
-            except (StopIteration, AttributeError):
+            except (StopIteration, AttributeError, TypeError):
                 indexes = np.arange(len(self.image_names), dtype=np.int)
                 if self._shuffle:
                     np.random.shuffle(indexes)
                 self.gen = self.pool.imap(self._im_processor,
-                                          ([self.image_names[i], self.get_annotation(i), self.dst_size] for i in indexes),
+                                          ([self.image_names[i],
+                                            self.get_annotation(i),
+                                            self.dst_size] for i in indexes),
                                           chunksize=self.batch_size)
                 self._epoch += 1
                 print('epoch {} start...'.format(self._epoch))
@@ -132,5 +136,3 @@ class ImageDataset(object):
     @property
     def batch_per_epoch(self):
         return self.num_images // self.batch_size
-
-

@@ -1,7 +1,7 @@
 import cv2
 import os
 import numpy as np
-from im_transform import imcv2_affine_trans, imcv2_recolor
+from .im_transform import imcv2_affine_trans, imcv2_recolor
 # from box import BoundBox, box_iou, prob_compare
 from utils.nms_wrapper import nms
 from utils.cython_yolo import yolo_to_bbox
@@ -79,9 +79,8 @@ def preprocess_train(data):
 
 
 def preprocess_test(data):
-
     im, _, inp_size = data
-    if isinstance(im, (str, unicode)):
+    if isinstance(im, (bytes, str)):
         im = cv2.imread(im)
     ori_im = np.copy(im)
 
@@ -169,16 +168,8 @@ def _bbox_targets_perimage(im_shape, gt_boxes, cls_inds, dontcare_areas, cfg):
     cell_inds = np.floor(cy) * W + np.floor(cx)
     cell_inds = cell_inds.astype(np.int)
 
-    # [x1, y1, x2, y2],  [class]
-    # gt_boxes[:, 0::2] /= im_shape[1]
-    # gt_boxes[:, 1::2] /= im_shape[0]
-    # gt_boxes[:, 0] = cx - np.floor(cx)
-    # gt_boxes[:, 1] = cy - np.floor(cy)
-    # gt_boxes[:, 2] = (gt_boxes[:, 2] - gt_boxes[:, 0]) / im_shape[1]
-    # gt_boxes[:, 3] = (gt_boxes[:, 3] - gt_boxes[:, 1]) / im_shape[0]
-
-    bbox_target = [[] for _ in range(H*W)]
-    cls_target = [[] for _ in range(H*W)]
+    bbox_target = [[] for _ in range(H * W)]
+    cls_target = [[] for _ in range(H * W)]
     for i, ind in enumerate(cell_inds):
         bbox_target[ind].append(gt_boxes[i])
         cls_target[ind].append(cls_inds[i])
@@ -189,30 +180,38 @@ def get_bbox_targets(images, gt_boxes, cls_inds, dontcares, cfg):
     bbox_targets = []
     cls_targets = []
     for i, im in enumerate(images):
-        bbox_target, cls_target = _bbox_targets_perimage(im.shape, gt_boxes[i], cls_inds[i], dontcares[i], cfg)
+        bbox_target, cls_target = _bbox_targets_perimage(
+            im.shape, gt_boxes[i], cls_inds[i], dontcares[i], cfg)
         bbox_targets.append(bbox_target)
         cls_targets.append(cls_target)
     return bbox_targets, cls_targets
 
 
-def draw_detection(im, bboxes, scores, cls_inds, cfg, thr=0.3):
-    # draw image
+def draw_detection(imgcv, bboxes, scores, cls_inds, cfg, thr=0.3):
+    """
+    Draws bboxes on imgcv if scores above thr
+
+    Args:
+        imgcv(numpy.ndarray): input image with shape (height, width, channels)
+        bboxes(numpy.ndarray): bboxes as rows (scaled to match imgcv shape)
+    """
     colors = cfg.colors
     labels = cfg.label_names
 
-    imgcv = np.copy(im)
+    imgcv = imgcv.copy()
+
     h, w, _ = imgcv.shape
+
+    # Draw boxes and labels on image
     for i, box in enumerate(bboxes):
         if scores[i] < thr:
             continue
         cls_indx = cls_inds[i]
 
         thick = int((h + w) / 300)
-        cv2.rectangle(imgcv,
-                      (box[0], box[1]), (box[2], box[3]),
+        cv2.rectangle(imgcv, (box[0], box[1]), (box[2], box[3]),
                       colors[cls_indx], thick)
         mess = '%s: %.3f' % (labels[cls_indx], scores[i])
         cv2.putText(imgcv, mess, (box[0], box[1] - 12),
                     0, 1e-3 * h, colors[cls_indx], thick // 3)
-
     return imgcv
