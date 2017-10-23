@@ -97,3 +97,14 @@ cd faster_rcnn_pytorch
 mkdir output
 python test.py
 ```
+### Training on your own data
+
+The forward pass requires that you supply 4 arguments to the network:
+
+- `im_data` - image data.  
+  - This should be in the format `C x H x W`, where `C` corresponds to the color channels of the image and `H` and `W` are the height and width respectively.  
+  - Color channels should be in RGB format.  
+  - Use the `imcv2_recolor` function provided in `utils/im_transform.py` to preprocess your image.  Also, make sure that images have been resized to `416 x 416` pixels
+- `gt_boxes` - A list of `numpy` arrays, where each one is of size `N x 4`, where `N` is the number of features in the image.  The four values in each row should correspond to `x_bottom_left`, `y_bottom_left`, `x_top_right`, and `y_top_right`.  
+- `gt_classes` - A list of `numpy` arrays, where each array contains an integer value corresponding to the class of each bounding box provided in `gt_boxes`
+- `dontcare` - a list of lists
