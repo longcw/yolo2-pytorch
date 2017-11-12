@@ -1,0 +1,4 @@
+Cython==0.27.3
+opencv-python==3.3.0.10
+h5py==2.7.1
+pycrayon==0.5
