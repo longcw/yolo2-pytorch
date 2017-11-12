@@ -51,14 +51,14 @@ class FC(nn.Module):
 def save_net(fname, net):
     import h5py
     h5f = h5py.File(fname, mode='w')
-    for k, v in net.state_dict().items():
+    for k, v in list(net.state_dict().items()):
         h5f.create_dataset(k, data=v.cpu().numpy())
 
 
 def load_net(fname, net):
     import h5py
     h5f = h5py.File(fname, mode='r')
-    for k, v in net.state_dict().items():
+    for k, v in list(net.state_dict().items()):
         param = torch.from_numpy(np.asarray(h5f[k]))
         v.copy_(param)
 
@@ -67,7 +67,7 @@ def load_pretrained_npy(faster_rcnn_model, fname):
     params = np.load(fname).item()
     # vgg16
     vgg16_dict = faster_rcnn_model.rpn.features.state_dict()
-    for name, val in vgg16_dict.items():
+    for name, val in list(vgg16_dict.items()):
         # # print name
         # # print val.size()
         # # print param.size()
@@ -86,7 +86,7 @@ def load_pretrained_npy(faster_rcnn_model, fname):
     # fc6 fc7
     frcnn_dict = faster_rcnn_model.state_dict()
     pairs = {'fc6.fc': 'fc6', 'fc7.fc': 'fc7'}
-    for k, v in pairs.items():
+    for k, v in list(pairs.items()):
         key = '{}.weight'.format(k)
         param = torch.from_numpy(params[v]['weights']).permute(1, 0)
         frcnn_dict[key].copy_(param)

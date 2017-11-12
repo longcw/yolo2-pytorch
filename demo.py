@@ -69,8 +69,8 @@ for i, (image, im_data) in enumerate(pool.imap(preprocess, im_fnames, chunksize=
 
     if i % 1 == 0:
         format_str = 'frame: %d, (detection: %.1f Hz, %.1f ms) (total: %.1f Hz, %.1f ms)'
-        print(format_str % (
-            i, 1. / det_time, det_time * 1000, 1. / total_time, total_time * 1000))
+        print((format_str % (
+            i, 1. / det_time, det_time * 1000, 1. / total_time, total_time * 1000)))
 
         t_total.clear()
         t_det.clear()

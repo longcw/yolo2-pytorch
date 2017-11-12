@@ -1,4 +1,4 @@
-import cPickle
+import pickle
 import os
 import uuid
 import cv2
@@ -9,8 +9,8 @@ import scipy.sparse
 
 # from functools import partial
 
-from imdb import ImageDataset
-from voc_eval import voc_eval
+from .imdb import ImageDataset
+from .voc_eval import voc_eval
 # from utils.yolo import preprocess_train
 
 
@@ -30,7 +30,7 @@ class VOCDataset(ImageDataset):
                          'cow', 'diningtable', 'dog', 'horse',
                          'motorbike', 'person', 'pottedplant',
                          'sheep', 'sofa', 'train', 'tvmonitor')
-        self._class_to_ind = dict(zip(self.classes, range(self.num_classes)))
+        self._class_to_ind = dict(list(zip(self.classes, list(range(self.num_classes)))))
         self._image_ext = '.jpg'
 
         self._salt = str(uuid.uuid4())
@@ -102,15 +102,15 @@ class VOCDataset(ImageDataset):
         cache_file = os.path.join(self.cache_path, self.name + '_gt_roidb.pkl')
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as fid:
-                roidb = cPickle.load(fid)
-            print '{} gt roidb loaded from {}'.format(self.name, cache_file)
+                roidb = pickle.load(fid)
+            print('{} gt roidb loaded from {}'.format(self.name, cache_file))
             return roidb
 
         gt_roidb = [self._annotation_from_index(index)
                     for index in self.image_indexes]
         with open(cache_file, 'wb') as fid:
-            cPickle.dump(gt_roidb, fid, cPickle.HIGHEST_PROTOCOL)
-        print 'wrote gt roidb to {}'.format(cache_file)
+            pickle.dump(gt_roidb, fid, pickle.HIGHEST_PROTOCOL)
+        print('wrote gt roidb to {}'.format(cache_file))
 
         return gt_roidb
 
@@ -180,7 +180,7 @@ class VOCDataset(ImageDataset):
         for cls_ind, cls in enumerate(self.classes):
             if cls == '__background__':
                 continue
-            print 'Writing {} VOC results file'.format(cls)
+            print('Writing {} VOC results file'.format(cls))
             filename = self._get_voc_results_file_template().format(cls)
             with open(filename, 'wt') as f:
                 for im_ind, index in enumerate(self.image_indexes):
@@ -188,7 +188,7 @@ class VOCDataset(ImageDataset):
                     if dets == []:
                         continue
                     # the VOCdevkit expects 1-based indices
-                    for k in xrange(dets.shape[0]):
+                    for k in range(dets.shape[0]):
                         f.write('{:s} {:.3f} {:.1f} {:.1f} {:.1f} {:.1f}\n'.
                                 format(index, dets[k, -1],
                                        dets[k, 0] + 1, dets[k, 1] + 1,
@@ -210,7 +210,7 @@ class VOCDataset(ImageDataset):
         aps = []
         # The PASCAL VOC metric changed in 2010
         use_07_metric = True if int(self._year) < 2010 else False
-        print 'VOC07 metric? ' + ('Yes' if use_07_metric else 'No')
+        print('VOC07 metric? ' + ('Yes' if use_07_metric else 'No'))
         if output_dir is not None and not os.path.isdir(output_dir):
             os.mkdir(output_dir)
         for i, cls in enumerate(self._classes):
@@ -221,16 +221,16 @@ class VOCDataset(ImageDataset):
                 filename, annopath, imagesetfile, cls, cachedir, ovthresh=0.5,
                 use_07_metric=use_07_metric)
             aps += [ap]
-            print('AP for {} = {:.4f}'.format(cls, ap))
+            print(('AP for {} = {:.4f}'.format(cls, ap)))
             if output_dir is not None:
                 with open(os.path.join(output_dir, cls + '_pr.pkl'), 'w') as f:
-                    cPickle.dump({'rec': rec, 'prec': prec, 'ap': ap}, f)
-        print('Mean AP = {:.4f}'.format(np.mean(aps)))
+                    pickle.dump({'rec': rec, 'prec': prec, 'ap': ap}, f)
+        print(('Mean AP = {:.4f}'.format(np.mean(aps))))
         print('~~~~~~~~')
         print('Results:')
         for ap in aps:
-            print('{:.3f}'.format(ap))
-        print('{:.3f}'.format(np.mean(aps)))
+            print(('{:.3f}'.format(ap)))
+        print(('{:.3f}'.format(np.mean(aps))))
         print('~~~~~~~~')
         print('')
         print('--------------------------------------------------------------')

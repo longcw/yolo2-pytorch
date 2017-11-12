@@ -4,7 +4,7 @@ import numpy as np
 import datetime
 import time
 from collections import defaultdict
-import mask
+from . import mask
 import copy
 
 class COCOeval:
@@ -91,7 +91,7 @@ class COCOeval:
                 t = coco.imgs[obj['image_id']]
                 if type(obj['segmentation']) == list:
                     if type(obj['segmentation'][0]) == dict:
-                        print 'debug'
+                        print('debug')
                     obj['segmentation'] = mask.frPyObjects(obj['segmentation'],t['height'],t['width'])
                     if len(obj['segmentation']) == 1:
                         obj['segmentation'] = obj['segmentation'][0]
@@ -102,7 +102,7 @@ class COCOeval:
                 elif type(obj['segmentation']) == dict and type(obj['segmentation']['counts']) == list:
                     obj['segmentation'] = mask.frPyObjects([obj['segmentation']],t['height'],t['width'])[0]
                 elif type(obj['segmentation']) == dict and \
-                     type(obj['segmentation']['counts'] == unicode or type(obj['segmentation']['counts']) == str):
+                     type(obj['segmentation']['counts'] == str or type(obj['segmentation']['counts']) == str):
                     pass
                 else:
                     raise Exception('segmentation format not supported.')
@@ -132,7 +132,7 @@ class COCOeval:
         :return: None
         '''
         tic = time.time()
-        print 'Running per image evaluation...      '
+        print('Running per image evaluation...      ')
         p = self.params
         p.imgIds = list(np.unique(p.imgIds))
         if p.useCats:
@@ -158,7 +158,7 @@ class COCOeval:
              ]
         self._paramsEval = copy.deepcopy(self.params)
         toc = time.time()
-        print 'DONE (t=%0.2fs).'%(toc-tic)
+        print('DONE (t=%0.2fs).'%(toc-tic))
 
     def computeIoU(self, imgId, catId):
         p = self.params
@@ -212,7 +212,7 @@ class COCOeval:
 
         # sort dt highest score first, sort gt ignore last
         # gt = sorted(gt, key=lambda x: x['_ignore'])
-        gtind = [ind for (ind, g) in sorted(enumerate(gt), key=lambda (ind, g): g['_ignore']) ]
+        gtind = [ind for (ind, g) in sorted(enumerate(gt), key=lambda ind_g: ind_g[1]['_ignore']) ]
 
         gt = [gt[ind] for ind in gtind]
         dt = sorted(dt, key=lambda x: -x['score'])[0:maxDet]
@@ -277,10 +277,10 @@ class COCOeval:
         :param p: input params for evaluation
         :return: None
         '''
-        print 'Accumulating evaluation results...   '
+        print('Accumulating evaluation results...   ')
         tic = time.time()
         if not self.evalImgs:
-            print 'Please run evaluate() first'
+            print('Please run evaluate() first')
         # allows input customized parameters
         if p is None:
             p = self.params
@@ -303,7 +303,7 @@ class COCOeval:
         # get inds to evaluate
         k_list = [n for n, k in enumerate(p.catIds)  if k in setK]
         m_list = [m for n, m in enumerate(p.maxDets) if m in setM]
-        a_list = [n for n, a in enumerate(map(lambda x: tuple(x), p.areaRng)) if a in setA]
+        a_list = [n for n, a in enumerate([tuple(x) for x in p.areaRng]) if a in setA]
         i_list = [n for n, i in enumerate(p.imgIds)  if i in setI]
         # K0 = len(_pe.catIds)
         I0 = len(_pe.imgIds)
@@ -315,7 +315,7 @@ class COCOeval:
                 Na = a0*I0
                 for m, maxDet in enumerate(m_list):
                     E = [self.evalImgs[Nk+Na+i] for i in i_list]
-                    E = filter(None, E)
+                    E = [_f for _f in E if _f]
                     if len(E) == 0:
                         continue
                     dtScores = np.concatenate([e['dtScores'][0:maxDet] for e in E])
@@ -371,7 +371,7 @@ class COCOeval:
             'recall':   recall,
         }
         toc = time.time()
-        print 'DONE (t=%0.2fs).'%( toc-tic )
+        print('DONE (t=%0.2fs).'%( toc-tic ))
 
     def summarize(self):
         '''
@@ -406,7 +406,7 @@ class COCOeval:
                 mean_s = -1
             else:
                 mean_s = np.mean(s[s>-1])
-            print iStr.format(titleStr, typeStr, iouStr, areaStr, maxDetsStr, '%.3f'%(float(mean_s)))
+            print(iStr.format(titleStr, typeStr, iouStr, areaStr, maxDetsStr, '%.3f'%(float(mean_s))))
             return mean_s
 
         if not self.eval:

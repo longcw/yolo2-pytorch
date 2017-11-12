@@ -105,7 +105,7 @@ def _process_batch(data):
     ious_reshaped = np.reshape(ious, [hw, num_anchors, len(cell_inds)])
     for i, cell_ind in enumerate(cell_inds):
         if cell_ind >= hw or cell_ind < 0:
-            print cell_ind
+            print(cell_ind)
             continue
         a = anchor_inds[i]
 
@@ -247,7 +247,7 @@ class Darknet19(nn.Module):
                     'bn.running_mean': 'moving_mean', 'bn.running_var': 'moving_variance'}
         params = np.load(fname)
         own_dict = self.state_dict()
-        keys = own_dict.keys()
+        keys = list(own_dict.keys())
 
         for i, start in enumerate(range(0, len(keys), 5)):
             if num_conv is not None and i>= num_conv:
@@ -257,7 +257,7 @@ class Darknet19(nn.Module):
                 list_key = key.split('.')
                 ptype = dest_src['{}.{}'.format(list_key[-2], list_key[-1])]
                 src_key = '{}-convolutional/{}:0'.format(i, ptype)
-                print(src_key, own_dict[key].size(), params[src_key].shape)
+                print((src_key, own_dict[key].size(), params[src_key].shape))
                 param = torch.from_numpy(params[src_key])
                 if ptype == 'kernel':
                     param = param.permute(3, 2, 0, 1)
