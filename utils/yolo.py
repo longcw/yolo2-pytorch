@@ -1,5 +1,4 @@
 import cv2
-import os
 import numpy as np
 from .im_transform import imcv2_affine_trans, imcv2_recolor
 # from box import BoundBox, box_iou, prob_compare
@@ -49,8 +48,9 @@ def _offset_boxes(boxes, im_shape, scale, offs, flip):
     return boxes
 
 
-def preprocess_train(data):
+def preprocess_train(data, size_index):
     im_path, blob, inp_size = data
+    inp_size = inp_size[size_index]
     boxes, gt_classes = blob['boxes'], blob['gt_classes']
 
     im = cv2.imread(im_path)
@@ -128,7 +128,6 @@ def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg, thresh=0.05):
     bbox_pred = bbox_pred[keep]
     scores = scores[keep]
     cls_inds = cls_inds[keep]
-    # print scores.shape
 
     # NMS
     keep = np.zeros(len(bbox_pred), dtype=np.int)
