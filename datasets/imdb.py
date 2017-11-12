@@ -1,5 +1,4 @@
 import os
-import PIL
 import numpy as np
 from multiprocessing import Pool
 from functools import partial
@@ -23,7 +22,8 @@ def image_resize(im, size_index):
 
 
 class ImageDataset(object):
-    def __init__(self, name, datadir, batch_size, im_processor, processes=3, shuffle=True, dst_size=None):
+    def __init__(self, name, datadir, batch_size, im_processor,
+                 processes=3, shuffle=True, dst_size=None):
         self._name = name
         self._data_dir = datadir
         self._batch_size = batch_size
@@ -48,7 +48,8 @@ class ImageDataset(object):
         self._im_processor = im_processor
 
     def next_batch(self, size_index):
-        batch = {'images': [], 'gt_boxes': [], 'gt_classes': [], 'dontcare': [], 'origin_im': []}
+        batch = {'images': [], 'gt_boxes': [], 'gt_classes': [],
+                 'dontcare': [], 'origin_im': []}
         i = 0
         while i < self.batch_size:
             try:
@@ -64,8 +65,11 @@ class ImageDataset(object):
                 indexes = np.arange(len(self.image_names), dtype=np.int)
                 if self._shuffle:
                     np.random.shuffle(indexes)
-                self.gen = self.pool.imap(partial(self._im_processor, size_index=size_index),
-                                          ([self.image_names[i], self.get_annotation(i), self.dst_size] for i in indexes),
+                self.gen = self.pool.imap(partial(self._im_processor,
+                                                  size_index=size_index),
+                                          ([self.image_names[i],
+                                            self.get_annotation(i),
+                                            self.dst_size] for i in indexes),
                                           chunksize=self.batch_size)
                 self._epoch += 1
                 print(('epoch {} start...'.format(self._epoch)))
@@ -141,5 +145,3 @@ class ImageDataset(object):
     @property
     def batch_per_epoch(self):
         return self.num_images // self.batch_size
-
-

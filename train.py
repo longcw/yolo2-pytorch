@@ -101,11 +101,10 @@ for step in range(start_epoch * imdb.batch_per_epoch,
         iou_loss /= cnt
         cls_loss /= cnt
         print(('epoch %d[%d/%d], loss: %.3f, bbox_loss: %.3f, iou_loss: %.3f, '
-               'cls_loss: %.3f (%.2f s/batch, rest:%s)' % (
-            imdb.epoch, step_cnt, batch_per_epoch, train_loss, bbox_loss,
-            iou_loss, cls_loss, duration,
-            str(datetime.timedelta(seconds=int((batch_per_epoch - step_cnt)
-                                               * duration))))))
+               'cls_loss: %.3f (%.2f s/batch, rest:%s)' %
+               (imdb.epoch, step_cnt, batch_per_epoch, train_loss, bbox_loss,
+                iou_loss, cls_loss, duration,
+                str(datetime.timedelta(seconds=int((batch_per_epoch - step_cnt) * duration))))))  # noqa
 
         if use_tensorboard and step % cfg.log_interval == 0:
             exp.add_scalar_value('loss_train', train_loss, step=step)

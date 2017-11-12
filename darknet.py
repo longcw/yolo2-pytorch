@@ -11,7 +11,6 @@ from utils.cython_yolo import yolo_to_bbox
 from functools import partial
 
 from multiprocessing import Pool
-import multiprocessing
 
 
 def _make_layers(in_channels, net_cfg):
@@ -67,7 +66,8 @@ def _process_batch(data, size_index):
         np.ascontiguousarray(bbox_pred_np, dtype=np.float),
         anchors,
         H, W)
-    bbox_np = bbox_np[0]  # bbox_np = (hw, num_anchors, (x1, y1, x2, y2))   range: 0 ~ 1
+    # bbox_np = (hw, num_anchors, (x1, y1, x2, y2))   range: 0 ~ 1
+    bbox_np = bbox_np[0]
     bbox_np[:, :, 0::2] *= float(inp_size[0])  # rescale x
     bbox_np[:, :, 1::2] *= float(inp_size[1])  # rescale y
 
@@ -95,8 +95,10 @@ def _process_batch(data, size_index):
     target_boxes = np.empty(gt_boxes_b.shape, dtype=np.float)
     target_boxes[:, 0] = cx - np.floor(cx)  # cx
     target_boxes[:, 1] = cy - np.floor(cy)  # cy
-    target_boxes[:, 2] = (gt_boxes_b[:, 2] - gt_boxes_b[:, 0]) / inp_size[0] * out_size[0]  # tw
-    target_boxes[:, 3] = (gt_boxes_b[:, 3] - gt_boxes_b[:, 1]) / inp_size[1] * out_size[1]  # th
+    target_boxes[:, 2] = \
+        (gt_boxes_b[:, 2] - gt_boxes_b[:, 0]) / inp_size[0] * out_size[0]  # tw
+    target_boxes[:, 3] = \
+        (gt_boxes_b[:, 3] - gt_boxes_b[:, 1]) / inp_size[1] * out_size[1]  # th
 
     # for each gt boxes, match the best anchor
     gt_boxes_resize = np.copy(gt_boxes_b)
@@ -116,8 +118,9 @@ def _process_batch(data, size_index):
             continue
         a = anchor_inds[i]
 
-        iou_pred_cell_anchor = iou_pred_np[cell_ind, a, :]  # 0 ~ 1, should be close to 1
-        _iou_mask[cell_ind, a, :] = cfg.object_scale * (1 - iou_pred_cell_anchor)
+        # 0 ~ 1, should be close to 1
+        iou_pred_cell_anchor = iou_pred_np[cell_ind, a, :]
+        _iou_mask[cell_ind, a, :] = cfg.object_scale * (1 - iou_pred_cell_anchor)  # noqa
         # _ious[cell_ind, a, :] = anchor_ious[a, i]
         _ious[cell_ind, a, :] = ious_reshaped[cell_ind, a, i]
 
@@ -169,7 +172,7 @@ class Darknet19(nn.Module):
         # linear
         out_channels = cfg.num_anchors * (cfg.num_classes + 5)
         self.conv5 = net_utils.Conv2d(c4, out_channels, 1, 1, relu=False)
-        self.global_average_pool = nn.AvgPool2d((1,1))
+        self.global_average_pool = nn.AvgPool2d((1, 1))
 
         # train
         self.bbox_loss = None
@@ -181,7 +184,8 @@ class Darknet19(nn.Module):
     def loss(self):
         return self.bbox_loss + self.iou_loss + self.cls_loss
 
-    def forward(self, im_data, gt_boxes=None, gt_classes=None, dontcare=None, size_index=0):
+    def forward(self, im_data, gt_boxes=None, gt_classes=None, dontcare=None,
+                size_index=0):
         conv1s = self.conv1s(im_data)
         conv2 = self.conv2(conv1s)
         conv3 = self.conv3(conv2)
@@ -192,10 +196,13 @@ class Darknet19(nn.Module):
         global_average_pool = self.global_average_pool(conv5)
 
         # for detection
-        # bsize, c, h, w -> bsize, h, w, c -> bsize, h x w, num_anchors, 5+num_classes
+        # bsize, c, h, w -> bsize, h, w, c ->
+        #                   bsize, h x w, num_anchors, 5+num_classes
         bsize, _, h, w = global_average_pool.size()
         # assert bsize == 1, 'detection only support one image per batch'
-        global_average_pool_reshaped = global_average_pool.permute(0, 2, 3, 1).contiguous().view(bsize, -1, cfg.num_anchors, cfg.num_classes + 5)
+        global_average_pool_reshaped = \
+            global_average_pool.permute(0, 2, 3, 1).contiguous().view(bsize,
+                                                                      -1, cfg.num_anchors, cfg.num_classes + 5)  # noqa
 
         # tx, ty, tw, th, to -> sig(tx), sig(ty), exp(tw), exp(th), sig(to)
         xy_pred = F.sigmoid(global_average_pool_reshaped[:, :, :, 0:2])
@@ -204,44 +211,55 @@ class Darknet19(nn.Module):
         iou_pred = F.sigmoid(global_average_pool_reshaped[:, :, :, 4:5])
 
         score_pred = global_average_pool_reshaped[:, :, :, 5:].contiguous()
-        prob_pred = F.softmax(score_pred.view(-1, score_pred.size()[-1])).view_as(score_pred)
+        prob_pred = F.softmax(score_pred.view(-1, score_pred.size()[-1])).view_as(score_pred)  # noqa
 
         # for training
         if self.training:
             bbox_pred_np = bbox_pred.data.cpu().numpy()
             iou_pred_np = iou_pred.data.cpu().numpy()
-            _boxes, _ious, _classes, _box_mask, _iou_mask, _class_mask = self._build_target(
-                bbox_pred_np, gt_boxes, gt_classes, dontcare, iou_pred_np, size_index)
+            _boxes, _ious, _classes, _box_mask, _iou_mask, _class_mask = \
+                self._build_target(bbox_pred_np,
+                                   gt_boxes,
+                                   gt_classes,
+                                   dontcare,
+                                   iou_pred_np,
+                                   size_index)
 
             _boxes = net_utils.np_to_variable(_boxes)
             _ious = net_utils.np_to_variable(_ious)
             _classes = net_utils.np_to_variable(_classes)
-            box_mask = net_utils.np_to_variable(_box_mask, dtype=torch.FloatTensor)
-            iou_mask = net_utils.np_to_variable(_iou_mask, dtype=torch.FloatTensor)
-            class_mask = net_utils.np_to_variable(_class_mask, dtype=torch.FloatTensor)
+            box_mask = net_utils.np_to_variable(_box_mask,
+                                                dtype=torch.FloatTensor)
+            iou_mask = net_utils.np_to_variable(_iou_mask,
+                                                dtype=torch.FloatTensor)
+            class_mask = net_utils.np_to_variable(_class_mask,
+                                                  dtype=torch.FloatTensor)
 
             num_boxes = sum((len(boxes) for boxes in gt_boxes))
 
             # _boxes[:, :, :, 2:4] = torch.log(_boxes[:, :, :, 2:4])
             box_mask = box_mask.expand_as(_boxes)
 
-            self.bbox_loss = nn.MSELoss(size_average=False)(bbox_pred * box_mask, _boxes * box_mask) / num_boxes
-            self.iou_loss = nn.MSELoss(size_average=False)(iou_pred * iou_mask, _ious * iou_mask) / num_boxes
+            self.bbox_loss = nn.MSELoss(size_average=False)(bbox_pred * box_mask, _boxes * box_mask) / num_boxes  # noqa
+            self.iou_loss = nn.MSELoss(size_average=False)(iou_pred * iou_mask, _ious * iou_mask) / num_boxes  # noqa
 
             class_mask = class_mask.expand_as(prob_pred)
-            self.cls_loss = nn.MSELoss(size_average=False)(prob_pred * class_mask, _classes * class_mask) / num_boxes
+            self.cls_loss = nn.MSELoss(size_average=False)(prob_pred * class_mask, _classes * class_mask) / num_boxes  # noqa
 
         return bbox_pred, iou_pred, prob_pred
 
-    def _build_target(self, bbox_pred_np, gt_boxes, gt_classes, dontcare, iou_pred_np, size_index):
+    def _build_target(self, bbox_pred_np, gt_boxes, gt_classes, dontcare,
+                      iou_pred_np, size_index):
         """
-        :param bbox_pred: shape: (bsize, h x w, num_anchors, 4) : (sig(tx), sig(ty), exp(tw), exp(th))
+        :param bbox_pred: shape: (bsize, h x w, num_anchors, 4) :
+                          (sig(tx), sig(ty), exp(tw), exp(th))
         """
 
         bsize = bbox_pred_np.shape[0]
 
         targets = self.pool.map(partial(_process_batch, size_index=size_index),
-                                ((bbox_pred_np[b], gt_boxes[b], gt_classes[b], dontcare[b], iou_pred_np[b])
+                                ((bbox_pred_np[b], gt_boxes[b],
+                                  gt_classes[b], dontcare[b], iou_pred_np[b])
                                  for b in range(bsize)))
 
         _boxes = np.stack(tuple((row[0] for row in targets)))
@@ -256,7 +274,8 @@ class Darknet19(nn.Module):
     def load_from_npz(self, fname, num_conv=None):
         dest_src = {'conv.weight': 'kernel', 'conv.bias': 'biases',
                     'bn.weight': 'gamma', 'bn.bias': 'biases',
-                    'bn.running_mean': 'moving_mean', 'bn.running_var': 'moving_variance'}
+                    'bn.running_mean': 'moving_mean',
+                    'bn.running_var': 'moving_variance'}
         params = np.load(fname)
         own_dict = self.state_dict()
         keys = list(own_dict.keys())

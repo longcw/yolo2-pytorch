@@ -96,15 +96,17 @@ def preprocess_test(data):
 
 def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg, thresh=0.05):
     """
-    bbox_pred: (bsize, HxW, num_anchors, 4) ndarray of float (sig(tx), sig(ty), exp(tw), exp(th))
+    bbox_pred: (bsize, HxW, num_anchors, 4)
+               ndarray of float (sig(tx), sig(ty), exp(tw), exp(th))
     iou_pred: (bsize, HxW, num_anchors, 1)
     prob_pred: (bsize, HxW, num_anchors, num_classes)
     """
 
-    num_classes, num_anchors = cfg.num_classes, cfg.num_anchors
+    # num_classes, num_anchors = cfg.num_classes, cfg.num_anchors
+    num_classes = cfg.num_classes
     anchors = cfg.anchors
     W, H = cfg.out_size
-    assert bbox_pred.shape[0] == 1, 'postprocess only support one image per batch'
+    assert bbox_pred.shape[0] == 1, 'postprocess only support one image per batch'  # noqa
 
     bbox_pred = yolo_to_bbox(
         np.ascontiguousarray(bbox_pred, dtype=np.float),
@@ -188,7 +190,11 @@ def get_bbox_targets(images, gt_boxes, cls_inds, dontcares, cfg):
     bbox_targets = []
     cls_targets = []
     for i, im in enumerate(images):
-        bbox_target, cls_target = _bbox_targets_perimage(im.shape, gt_boxes[i], cls_inds[i], dontcares[i], cfg)
+        bbox_target, cls_target = _bbox_targets_perimage(im.shape,
+                                                         gt_boxes[i],
+                                                         cls_inds[i],
+                                                         dontcares[i],
+                                                         cfg)
         bbox_targets.append(bbox_target)
         cls_targets.append(cls_target)
     return bbox_targets, cls_targets

@@ -16,19 +16,30 @@ class RoIPoolFunction(Function):
     def forward(self, features, rois):
         batch_size, num_channels, data_height, data_width = features.size()
         num_rois = rois.size()[0]
-        output = torch.zeros(num_rois, num_channels, self.pooled_height, self.pooled_width)
-        argmax = torch.IntTensor(num_rois, num_channels, self.pooled_height, self.pooled_width).zero_()
+        output = torch.zeros(num_rois, num_channels,
+                             self.pooled_height, self.pooled_width)
+        argmax = torch.IntTensor(num_rois, num_channels,
+                                 self.pooled_height, self.pooled_width).zero_()
 
         if not features.is_cuda:
             _features = features.permute(0, 2, 3, 1)
-            roi_pooling.roi_pooling_forward(self.pooled_height, self.pooled_width, self.spatial_scale,
-                                            _features, rois, output)
+            roi_pooling.roi_pooling_forward(self.pooled_height,
+                                            self.pooled_width,
+                                            self.spatial_scale,
+                                            _features,
+                                            rois,
+                                            output)
             # output = output.cuda()
         else:
             output = output.cuda()
             argmax = argmax.cuda()
-            roi_pooling.roi_pooling_forward_cuda(self.pooled_height, self.pooled_width, self.spatial_scale,
-                                                 features, rois, output, argmax)
+            roi_pooling.roi_pooling_forward_cuda(self.pooled_height,
+                                                 self.pooled_width,
+                                                 self.spatial_scale,
+                                                 features,
+                                                 rois,
+                                                 output,
+                                                 argmax)
             self.output = output
             self.argmax = argmax
             self.rois = rois
@@ -41,9 +52,15 @@ class RoIPoolFunction(Function):
 
         batch_size, num_channels, data_height, data_width = self.feature_size
 
-        grad_input = torch.zeros(batch_size, num_channels, data_height, data_width).cuda()
-        roi_pooling.roi_pooling_backward_cuda(self.pooled_height, self.pooled_width, self.spatial_scale,
-                                              grad_output, self.rois, grad_input, self.argmax)
+        grad_input = torch.zeros(batch_size, num_channels,
+                                 data_height, data_width).cuda()
+        roi_pooling.roi_pooling_backward_cuda(self.pooled_height,
+                                              self.pooled_width,
+                                              self.spatial_scale,
+                                              grad_output,
+                                              self.rois,
+                                              grad_input,
+                                              self.argmax)
 
         # print grad_input
 
@@ -59,4 +76,4 @@ class RoIPool(torch.nn.Module):
         self.spatial_scale = float(spatial_scale)
 
     def forward(self, features, rois):
-        return RoIPoolFunction(self.pooled_height, self.pooled_width, self.spatial_scale)(features, rois)
+        return RoIPoolFunction(self.pooled_height, self.pooled_width, self.spatial_scale)(features, rois)  # noqa

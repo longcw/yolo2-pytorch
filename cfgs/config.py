@@ -1,6 +1,6 @@
 import os
-from .config_voc import *
-from .exps.darknet19_exp1 import *
+from .config_voc import *  # noqa
+from .exps.darknet19_exp1 import *  # noqa
 
 
 def mkdir(path, max_depth=3):
@@ -49,6 +49,7 @@ def _to_color(indx, base):
     r = 2 - (indx % base2) / base
     g = 2 - (indx % base2) % base
     return b * 127, r * 127, g * 127
+
 
 base = int(np.ceil(pow(num_classes, 1. / 3)))
 colors = [_to_color(x, base) for x in range(num_classes)]

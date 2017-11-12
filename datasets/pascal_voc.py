@@ -1,7 +1,6 @@
 import pickle
 import os
 import uuid
-import cv2
 import xml.etree.ElementTree as ET
 
 import numpy as np
@@ -15,22 +14,30 @@ from .voc_eval import voc_eval
 
 
 class VOCDataset(ImageDataset):
-    def __init__(self, imdb_name, datadir, batch_size, im_processor, processes=3, shuffle=True, dst_size=None):
-        super(VOCDataset, self).__init__(imdb_name, datadir, batch_size, im_processor, processes, shuffle, dst_size)
+    def __init__(self, imdb_name, datadir, batch_size, im_processor,
+                 processes=3, shuffle=True, dst_size=None):
+        super(VOCDataset, self).__init__(imdb_name, datadir, batch_size,
+                                         im_processor, processes,
+                                         shuffle, dst_size)
         meta = imdb_name.split('_')
         self._year = meta[1]
         self._image_set = meta[2]
-        self._devkit_path = os.path.join(datadir, 'VOCdevkit{}'.format(self._year))
-        self._data_path = os.path.join(self._devkit_path, 'VOC{}'.format(self._year))
-        assert os.path.exists(self._devkit_path), 'VOCdevkit path does not exist: {}'.format(self._devkit_path)
-        assert os.path.exists(self._data_path), 'Path does not exist: {}'.format(self._data_path)
+        self._devkit_path = os.path.join(datadir,
+                                         'VOCdevkit{}'.format(self._year))
+        self._data_path = os.path.join(self._devkit_path,
+                                       'VOC{}'.format(self._year))
+        assert os.path.exists(self._devkit_path), \
+            'VOCdevkit path does not exist: {}'.format(self._devkit_path)
+        assert os.path.exists(self._data_path), \
+            'Path does not exist: {}'.format(self._data_path)
 
         self._classes = ('aeroplane', 'bicycle', 'bird', 'boat',
                          'bottle', 'bus', 'car', 'cat', 'chair',
                          'cow', 'diningtable', 'dog', 'horse',
                          'motorbike', 'person', 'pottedplant',
                          'sheep', 'sofa', 'train', 'tvmonitor')
-        self._class_to_ind = dict(list(zip(self.classes, list(range(self.num_classes)))))
+        self._class_to_ind = dict(list(zip(self.classes,
+                                           list(range(self.num_classes)))))
         self._image_ext = '.jpg'
 
         self._salt = str(uuid.uuid4())
@@ -41,13 +48,15 @@ class VOCDataset(ImageDataset):
                        'use_salt': True}
 
         self.load_dataset()
-        # self.im_processor = partial(process_im, image_names=self._image_names, annotations=self._annotations)
+        # self.im_processor = partial(process_im,
+        #     image_names=self._image_names, annotations=self._annotations)
         # self.im_processor = preprocess_train
 
     def load_dataset(self):
         # set self._image_index and self._annotations
         self._image_indexes = self._load_image_set_index()
-        self._image_names = [self.image_path_from_index(index) for index in self.image_indexes]
+        self._image_names = [self.image_path_from_index(index)
+                             for index in self.image_indexes]
         self._annotations = self._load_pascal_annotations()
 
     def evaluate_detections(self, all_boxes, output_dir=None):
@@ -97,7 +106,8 @@ class VOCDataset(ImageDataset):
         """
         Return the database of ground-truth regions of interest.
 
-        This function loads/saves from/to a cache file to speed up future calls.
+        This function loads/saves from/to a cache file to speed up
+        future calls.
         """
         cache_file = os.path.join(self.cache_path, self.name + '_gt_roidb.pkl')
         if os.path.exists(cache_file):
@@ -149,7 +159,7 @@ class VOCDataset(ImageDataset):
             y2 = float(bbox.find('ymax').text) - 1
 
             diffc = obj.find('difficult')
-            difficult = 0 if diffc == None else int(diffc.text)
+            difficult = 0 if diffc is None else int(diffc.text)
             ishards[ix] = difficult
 
             cls = self._class_to_ind[obj.find('name').text.lower().strip()]
@@ -169,8 +179,10 @@ class VOCDataset(ImageDataset):
 
     def _get_voc_results_file_template(self):
         # VOCdevkit/results/VOC2007/Main/<comp_id>_det_test_aeroplane.txt
-        filename = self._get_comp_id() + '_det_' + self._image_set + '_{:s}.txt'
-        filedir = os.path.join(self._devkit_path, 'results', 'VOC' + self._year, 'Main')
+        filename = self._get_comp_id() + '_det_' + self._image_set + \
+                   '_{:s}.txt'
+        filedir = os.path.join(self._devkit_path,
+                               'results', 'VOC' + self._year, 'Main')
         if not os.path.exists(filedir):
             os.makedirs(filedir)
         path = os.path.join(filedir, filename)
