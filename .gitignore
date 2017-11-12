@@ -100,3 +100,6 @@ ENV/
 models
 models/*
 data/*
+
+VOCdevkit/*
+src/*
