@@ -43,14 +43,14 @@ class ImageDataset(object):
         i = 0
         while i < self.batch_size:
             try:
-                images, gt_boxes, classes, dontcare, origin_im = self.gen.next()
+                images, gt_boxes, classes, dontcare, origin_im = next(self.gen)
                 batch['images'].append(images)
                 batch['gt_boxes'].append(gt_boxes)
                 batch['gt_classes'].append(classes)
                 batch['dontcare'].append(dontcare)
                 batch['origin_im'].append(origin_im)
                 i += 1
-            except (StopIteration, AttributeError):
+            except (StopIteration, AttributeError, TypeError):
                 indexes = np.arange(len(self.image_names), dtype=np.int)
                 if self._shuffle:
                     np.random.shuffle(indexes)
@@ -58,9 +58,8 @@ class ImageDataset(object):
                                           ([self.image_names[i], self.get_annotation(i), self.dst_size] for i in indexes),
                                           chunksize=self.batch_size)
                 self._epoch += 1
-                print('epoch {} start...'.format(self._epoch))
+                print(('epoch {} start...'.format(self._epoch)))
         batch['images'] = np.asarray(batch['images'])
-
         return batch
 
     def close(self):
