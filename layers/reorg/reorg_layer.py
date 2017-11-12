@@ -1,6 +1,6 @@
 import torch
 from torch.autograd import Function
-from _ext import reorg_layer
+from ._ext import reorg_layer
 
 
 class ReorgFunction(Function):
@@ -27,7 +27,7 @@ class ReorgFunction(Function):
         bsize, c, h, w = grad_top.size()
 
         out_w, out_h, out_c = w * stride, h * stride, c / (stride * stride)
-        grad_bottom = torch.FloatTensor(bsize, out_c, out_h, out_w)
+        grad_bottom = torch.FloatTensor(bsize, int(out_c), out_h, out_w)
 
         # rev_stride = 1. / stride    # reverse
         if grad_top.is_cuda:
