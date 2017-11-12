@@ -111,6 +111,7 @@ def _process_batch(data, size_index):
     ious_reshaped = np.reshape(ious, [hw, num_anchors, len(cell_inds)])
     for i, cell_ind in enumerate(cell_inds):
         if cell_ind >= hw or cell_ind < 0:
+            print('cell inds size {}'.format(len(cell_inds)))
             print('cell over {} hw {}'.format(cell_ind, hw))
             continue
         a = anchor_inds[i]
@@ -168,6 +169,7 @@ class Darknet19(nn.Module):
         # linear
         out_channels = cfg.num_anchors * (cfg.num_classes + 5)
         self.conv5 = net_utils.Conv2d(c4, out_channels, 1, 1, relu=False)
+        self.global_average_pool = nn.AvgPool2d((1,1))
 
         # train
         self.bbox_loss = None
@@ -187,6 +189,7 @@ class Darknet19(nn.Module):
         cat_1_3 = torch.cat([conv1s_reorg, conv3], 1)
         conv4 = self.conv4(cat_1_3)
         conv5 = self.conv5(conv4)   # batch_size, out_channels, h, w
+        conv5 = self.global_average_pool(conv5)
 
         # for detection
         # bsize, c, h, w -> bsize, h, w, c -> bsize, h x w, num_anchors, 5+num_classes
