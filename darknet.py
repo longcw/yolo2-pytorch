@@ -189,21 +189,21 @@ class Darknet19(nn.Module):
         cat_1_3 = torch.cat([conv1s_reorg, conv3], 1)
         conv4 = self.conv4(cat_1_3)
         conv5 = self.conv5(conv4)   # batch_size, out_channels, h, w
-        conv5 = self.global_average_pool(conv5)
+        global_average_pool = self.global_average_pool(conv5)
 
         # for detection
         # bsize, c, h, w -> bsize, h, w, c -> bsize, h x w, num_anchors, 5+num_classes
-        bsize, _, h, w = conv5.size()
+        bsize, _, h, w = global_average_pool.size()
         # assert bsize == 1, 'detection only support one image per batch'
-        conv5_reshaped = conv5.permute(0, 2, 3, 1).contiguous().view(bsize, -1, cfg.num_anchors, cfg.num_classes + 5)
+        global_average_pool_reshaped = global_average_pool.permute(0, 2, 3, 1).contiguous().view(bsize, -1, cfg.num_anchors, cfg.num_classes + 5)
 
         # tx, ty, tw, th, to -> sig(tx), sig(ty), exp(tw), exp(th), sig(to)
-        xy_pred = F.sigmoid(conv5_reshaped[:, :, :, 0:2])
-        wh_pred = torch.exp(conv5_reshaped[:, :, :, 2:4])
+        xy_pred = F.sigmoid(global_average_pool_reshaped[:, :, :, 0:2])
+        wh_pred = torch.exp(global_average_pool_reshaped[:, :, :, 2:4])
         bbox_pred = torch.cat([xy_pred, wh_pred], 3)
-        iou_pred = F.sigmoid(conv5_reshaped[:, :, :, 4:5])
+        iou_pred = F.sigmoid(global_average_pool_reshaped[:, :, :, 4:5])
 
-        score_pred = conv5_reshaped[:, :, :, 5:].contiguous()
+        score_pred = global_average_pool_reshaped[:, :, :, 5:].contiguous()
         prob_pred = F.softmax(score_pred.view(-1, score_pred.size()[-1])).view_as(score_pred)
 
         # for training
