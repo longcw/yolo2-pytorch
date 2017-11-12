@@ -6,10 +6,12 @@ import torch.nn.functional as F
 import utils.network as net_utils
 import cfgs.config as cfg
 from layers.reorg.reorg_layer import ReorgLayer
-from utils.cython_bbox import bbox_ious, bbox_intersections, bbox_overlaps, anchor_intersections
+from utils.cython_bbox import bbox_ious, anchor_intersections
 from utils.cython_yolo import yolo_to_bbox
+from functools import partial
 
 from multiprocessing import Pool
+import multiprocessing
 
 
 def _make_layers(in_channels, net_cfg):
@@ -25,17 +27,21 @@ def _make_layers(in_channels, net_cfg):
                 layers.append(nn.MaxPool2d(kernel_size=2, stride=2))
             else:
                 out_channels, ksize = item
-                layers.append(net_utils.Conv2d_BatchNorm(in_channels, out_channels, ksize, same_padding=True))
-                # layers.append(net_utils.Conv2d(in_channels, out_channels, ksize, same_padding=True))
+                layers.append(net_utils.Conv2d_BatchNorm(in_channels,
+                                                         out_channels,
+                                                         ksize,
+                                                         same_padding=True))
+                # layers.append(net_utils.Conv2d(in_channels, out_channels,
+                #     ksize, same_padding=True))
                 in_channels = out_channels
 
     return nn.Sequential(*layers), in_channels
 
 
-def _process_batch(data):
-    W, H = cfg.out_size
-    inp_size = cfg.inp_size
-    out_size = cfg.out_size
+def _process_batch(data, size_index):
+    W, H = cfg.multi_scale_out_size[size_index]
+    inp_size = cfg.multi_scale_inp_size[size_index]
+    out_size = cfg.multi_scale_out_size[size_index]
 
     bbox_pred_np, gt_boxes, gt_classes, dontcares, iou_pred_np = data
 
@@ -105,7 +111,7 @@ def _process_batch(data):
     ious_reshaped = np.reshape(ious, [hw, num_anchors, len(cell_inds)])
     for i, cell_ind in enumerate(cell_inds):
         if cell_ind >= hw or cell_ind < 0:
-            print(cell_ind)
+            print('cell over {} hw {}'.format(cell_ind, hw))
             continue
         a = anchor_inds[i]
 
@@ -154,7 +160,8 @@ class Darknet19(nn.Module):
         self.conv3, c3 = _make_layers(c2, net_cfgs[6])
 
         stride = 2
-        self.reorg = ReorgLayer(stride=2)   # stride*stride times the channels of conv1s
+        # stride*stride times the channels of conv1s
+        self.reorg = ReorgLayer(stride=2)
         # cat [conv1s, conv3]
         self.conv4, c4 = _make_layers((c1*(stride*stride) + c3), net_cfgs[7])
 
@@ -172,7 +179,7 @@ class Darknet19(nn.Module):
     def loss(self):
         return self.bbox_loss + self.iou_loss + self.cls_loss
 
-    def forward(self, im_data, gt_boxes=None, gt_classes=None, dontcare=None):
+    def forward(self, im_data, gt_boxes=None, gt_classes=None, dontcare=None, size_index=0):
         conv1s = self.conv1s(im_data)
         conv2 = self.conv2(conv1s)
         conv3 = self.conv3(conv2)
@@ -201,7 +208,7 @@ class Darknet19(nn.Module):
             bbox_pred_np = bbox_pred.data.cpu().numpy()
             iou_pred_np = iou_pred.data.cpu().numpy()
             _boxes, _ious, _classes, _box_mask, _iou_mask, _class_mask = self._build_target(
-                bbox_pred_np, gt_boxes, gt_classes, dontcare, iou_pred_np)
+                bbox_pred_np, gt_boxes, gt_classes, dontcare, iou_pred_np, size_index)
 
             _boxes = net_utils.np_to_variable(_boxes)
             _ious = net_utils.np_to_variable(_ious)
@@ -223,14 +230,16 @@ class Darknet19(nn.Module):
 
         return bbox_pred, iou_pred, prob_pred
 
-    def _build_target(self, bbox_pred_np, gt_boxes, gt_classes, dontcare, iou_pred_np):
+    def _build_target(self, bbox_pred_np, gt_boxes, gt_classes, dontcare, iou_pred_np, size_index):
         """
         :param bbox_pred: shape: (bsize, h x w, num_anchors, 4) : (sig(tx), sig(ty), exp(tw), exp(th))
         """
 
         bsize = bbox_pred_np.shape[0]
 
-        targets = self.pool.map(_process_batch, ((bbox_pred_np[b], gt_boxes[b], gt_classes[b], dontcare[b], iou_pred_np[b]) for b in range(bsize)))
+        targets = self.pool.map(partial(_process_batch, size_index=size_index),
+                                ((bbox_pred_np[b], gt_boxes[b], gt_classes[b], dontcare[b], iou_pred_np[b])
+                                 for b in range(bsize)))
 
         _boxes = np.stack(tuple((row[0] for row in targets)))
         _ious = np.stack(tuple((row[1] for row in targets)))
@@ -250,7 +259,7 @@ class Darknet19(nn.Module):
         keys = list(own_dict.keys())
 
         for i, start in enumerate(range(0, len(keys), 5)):
-            if num_conv is not None and i>= num_conv:
+            if num_conv is not None and i >= num_conv:
                 break
             end = min(start+5, len(keys))
             for key in keys[start:end]:
@@ -263,8 +272,8 @@ class Darknet19(nn.Module):
                     param = param.permute(3, 2, 0, 1)
                 own_dict[key].copy_(param)
 
+
 if __name__ == '__main__':
     net = Darknet19()
     # net.load_from_npz('models/yolo-voc.weights.npz')
     net.load_from_npz('models/darknet19.weights.npz', num_conv=18)
-
