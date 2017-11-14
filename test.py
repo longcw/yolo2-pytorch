@@ -2,6 +2,7 @@ import os
 import cv2
 import numpy as np
 import pickle
+import argparse
 
 from darknet import Darknet19
 import utils.yolo as yolo_utils
@@ -16,6 +17,13 @@ def preprocess(fname):
     image = cv2.imread(fname)
     im_data = np.expand_dims(yolo_utils.preprocess_test(image, cfg.inp_size), 0)  # noqa
     return image, im_data
+
+
+parser = argparse.ArgumentParser(description='PyTorch Yolo')
+parser.add_argument('--image_size_index', type=int, default=0,
+                    metavar='image_size_index',
+                    help='setting images size index 0:320, 1:352, 2:384, 3:416, 4:448, 5:480, 6:512, 7:544, 8:576')
+args = parser.parse_args()
 
 
 # hyper-parameters
@@ -44,10 +52,11 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
     # timers
     _t = {'im_detect': Timer(), 'misc': Timer()}
     det_file = os.path.join(output_dir, 'detections.pkl')
+    size_index = args.image_size_index
 
     for i in range(num_images):
 
-        batch = imdb.next_batch()
+        batch = imdb.next_batch(size_index=size_index)
         ori_im = batch['origin_im'][0]
         im_data = net_utils.np_to_variable(batch['images'], is_cuda=True,
                                            volatile=True).permute(0, 3, 1, 2)
@@ -65,7 +74,9 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
                                                           prob_pred,
                                                           ori_im.shape,
                                                           cfg,
-                                                          thresh)
+                                                          thresh,
+                                                          size_index
+                                                          )
         detect_time = _t['im_detect'].toc()
 
         _t['misc'].tic()
@@ -122,7 +133,7 @@ if __name__ == '__main__':
     # data loader
     imdb = VOCDataset(imdb_name, cfg.DATA_DIR, cfg.batch_size,
                       yolo_utils.preprocess_test,
-                      processes=2, shuffle=False, dst_size=cfg.inp_size)
+                      processes=2, shuffle=False, dst_size=cfg.multi_scale_inp_size)
 
     net = Darknet19()
     net_utils.load_net(trained_model, net)

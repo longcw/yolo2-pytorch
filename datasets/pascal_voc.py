@@ -235,7 +235,7 @@ class VOCDataset(ImageDataset):
             aps += [ap]
             print(('AP for {} = {:.4f}'.format(cls, ap)))
             if output_dir is not None:
-                with open(os.path.join(output_dir, cls + '_pr.pkl'), 'w') as f:
+                with open(os.path.join(output_dir, cls + '_pr.pkl'), 'wb') as f:
                     pickle.dump({'rec': rec, 'prec': prec, 'ap': ap}, f)
         print(('Mean AP = {:.4f}'.format(np.mean(aps))))
         print('~~~~~~~~')

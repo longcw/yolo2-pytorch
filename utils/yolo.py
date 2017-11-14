@@ -78,9 +78,10 @@ def preprocess_train(data, size_index):
     return im, boxes, gt_classes, [], ori_im
 
 
-def preprocess_test(data):
+def preprocess_test(data, size_index):
 
     im, _, inp_size = data
+    inp_size = inp_size[size_index]
     if isinstance(im, str):
         im = cv2.imread(im)
     ori_im = np.copy(im)
@@ -94,7 +95,8 @@ def preprocess_test(data):
     return im, [], [], [], ori_im
 
 
-def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg, thresh=0.05):
+def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg, thresh=0.05,
+                size_index=0):
     """
     bbox_pred: (bsize, HxW, num_anchors, 4)
                ndarray of float (sig(tx), sig(ty), exp(tw), exp(th))
@@ -105,7 +107,7 @@ def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg, thresh=0.05):
     # num_classes, num_anchors = cfg.num_classes, cfg.num_anchors
     num_classes = cfg.num_classes
     anchors = cfg.anchors
-    W, H = cfg.out_size
+    W, H = cfg.multi_scale_out_size[size_index]
     assert bbox_pred.shape[0] == 1, 'postprocess only support one image per batch'  # noqa
 
     bbox_pred = yolo_to_bbox(
