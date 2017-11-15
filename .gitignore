@@ -100,3 +100,4 @@ ENV/
 models
 models/*
 data/*
+*.h5
