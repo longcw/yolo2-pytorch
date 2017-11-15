@@ -20,16 +20,16 @@ except ImportError:
 
 
 # data loader
-imdb = VOCDataset(cfg.imdb_train, cfg.DATA_DIR, cfg.train_batch_size,
+imdb = VOCDataset(cfg.imdb_train, cfg.DATA_DIR, 4,
                   yolo_utils.preprocess_train, processes=2, shuffle=True, dst_size=cfg.inp_size)
 print('load data succ...')
 
 net = Darknet19()
-# net_utils.load_net(cfg.trained_model, net)
+net_utils.load_net(cfg.trained_model, net)
 # pretrained_model = os.path.join(cfg.train_output_dir, 'darknet19_voc07trainval_exp1_63.h5')
 # pretrained_model = cfg.trained_model
 # net_utils.load_net(pretrained_model, net)
-net.load_from_npz(cfg.pretrained_model, num_conv=18)
+#net.load_from_npz(cfg.pretrained_model, num_conv=18)
 net.cuda()
 net.train()
 print('load net succ...')
@@ -75,6 +75,9 @@ for step in range(start_epoch * imdb.batch_per_epoch, cfg.max_epoch * imdb.batch
 
     # forward
     im_data = net_utils.np_to_variable(im, is_cuda=True, volatile=False).permute(0, 3, 1, 2)
+    print(im_data)
+    print(len(gt_boxes))
+    print(len(gt_classes))
     net(im_data, gt_boxes, gt_classes, dontcare)
 
     # backward
