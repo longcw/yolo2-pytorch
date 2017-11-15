@@ -1,0 +1,2 @@
+#!/bin/bash
+./gdown.pl https://drive.google.com/uc?id=0B4pXCfnYmG1WUUdtRHNnLWdaMEU yolo-voc.weights.h5
