@@ -7,7 +7,7 @@ __pycache__/
 
 # C extensions
 *.so
-
+*.tar
 # Distribution / packaging
 .Python
 env/
@@ -104,3 +104,4 @@ data/*
 datasets/*.zip
 datasets/LISA/
 *.save
+VOCdevkit/
