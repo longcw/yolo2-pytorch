@@ -1,0 +1,4 @@
+warning: addedLane, curveRight, dip, intersection, laneEnds, merge, pedestrianCrossing, signalAhead, slow, stopAhead, thruMergeLeft, thruMergeRight, turnLeft, turnRight, yieldAhead
+prohibition: doNotPass, keepRight, rightLaneMustTurn, speedLimit15, speedLimit25, speedLimit30, speedLimit35, speedLimit40, speedLimit45, speedLimit50, speedLimit55, speedLimit65, truckSpeedLimit55
+speedLimit: speedLimit15, speedLimit25, speedLimit30, speedLimit35, speedLimit40, speedLimit45, speedLimit50, speedLimit55, speedLimit65, speedLimitUrdbl
+speedLimitGood: speedLimit15, speedLimit25, speedLimit30, speedLimit35, speedLimit40, speedLimit45, speedLimit50, speedLimit55, speedLimit65

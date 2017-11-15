@@ -1,0 +1,4 @@
+vid0-5: Old CVRR recordings.
+vid6: Bike recording, Canon S95
+vid7-11: Canon S95
+auia*: New CVRR recordings from Audi Intelligent Urban Assist car
