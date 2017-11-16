@@ -8,6 +8,7 @@ import pandas as pd
 from darknet import Darknet19
 from datasets.pascal_voc import VOCDataset
 from utils import im_transform
+from skimage import io, transform
 import utils.yolo as yolo_utils
 import utils.network as net_utils
 from utils.timer import Timer
@@ -152,7 +153,7 @@ class LISADataset():
     def dataPoint(self, ix, load_image=True): 
         local_fp = self.images_file.ix[ix, 0]
         fp = os.path.join(self.root_dir, local_fp)
-        print('loading: ' + fp)
+    #    print('loading: ' + fp)
         tensor, dx, dy = self.fileToTensor(fp)
         image_class = self.tags.ix[ix, 0]
         class_id = self.category_name_to_id[image_class]
@@ -166,6 +167,10 @@ class LISADataset():
         tags[3]=vals[1]
         tags = self.rescaleTags(tags,dx,dy)       
         return local_fp, tensor, dx, dy, tags, class_id
+    def reset(self):
+        self.current_ix=0
+    def hasMoreImages(self):
+        return self.current_ix<self.images_file.shape[0]
     def getBatch(self, batch_size = 8):
         images = torch.FloatTensor(1,3,416,416)
         temp = torch.FloatTensor(1,3,416,416)
@@ -178,12 +183,12 @@ class LISADataset():
         labels.append(np.array([tags]))
         classes.append(np.array([class_id]))
         while(True):
-            current_ix = current_ix + 1
-            if(current_ix>=self.images_file.shape[0]):
+            self.current_ix = self.current_ix + 1
+            if(self.current_ix>=self.images_file.shape[0]):
                 break
             img_file =  self.images_file.ix[self.current_ix, 0]
             if(img_file == current_img_file):
-                print('file is the same')
+         #       print('file is the same')
                 tags, class_id = self.loadOnlyTags(self.current_ix, dx, dy)
                 labels[-1] = np.concatenate((labels[-1], [tags]))
                 classes[-1] = np.concatenate((classes[-1], np.array([class_id])))

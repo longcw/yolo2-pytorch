@@ -63,7 +63,6 @@ bbox_loss, iou_loss, cls_loss = 0., 0., 0.
 cnt = 0
 t = Timer()
 step_cnt = 0
-
 for step in range(start_epoch * imdb.batch_per_epoch, cfg.max_epoch * imdb.batch_per_epoch):
     t.tic()
     # batch

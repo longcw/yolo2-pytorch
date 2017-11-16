@@ -9,15 +9,68 @@ import cv2
 from utils import im_transform
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
-from datasets.lisa_dataset import LISADataset
-
+from lisa_dataset import LISADataset
+import utils.yolo as yolo_utils
+import utils.network as net_utils
+from utils.timer import Timer
+import cfgs.config as cfg
+from darknet import Darknet19
 
 images_file = 'datasets/LISA/allAnnotations.csv'
 tags_file = 'datasets/LISA/tags.csv'
 root_dir = 'datasets/LISA'
 ds = LISADataset(images_file, tags_file, root_dir)
-images, labels, classes = ds.getBatch(0, batch_size = 8)
-print(images)
-print(labels[0].shape)
-print(classes[0].shape)
- 
+
+net = Darknet19()
+net_utils.load_net(cfg.trained_model, net)
+# pretrained_model = os.path.join(cfg.train_output_dir, 'darknet19_voc07trainval_exp1_63.h5')
+# pretrained_model = cfg.trained_model
+# net_utils.load_net(pretrained_model, net)
+#net.load_from_npz(cfg.pretrained_model, num_conv=18)
+net.cuda()
+net.train()
+print('load net succ...')
+
+# optimizer
+num_epochs = 0
+
+lr = cfg.init_learning_rate
+optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=cfg.momentum, weight_decay=cfg.weight_decay)
+index = 0
+num_epochs = 25
+train_loss = 0
+bbox_loss, iou_loss, cls_loss = 0., 0., 0.
+for i in range(0, num_epochs):
+    ds.reset()
+    cnt = 0
+    while(ds.hasMoreImages()):
+    # batch
+    
+        images, labels, classes = ds.getBatch(batch_size = 32)
+        im_data = torch.autograd.Variable(images).cuda()
+        dont_care=np.array([[], [], [], [], [], [], [], [],
+                           [], [], [], [], [], [], [], [],
+                           [], [], [], [], [], [], [], [],
+                           [], [], [], [], [], [], [], []])
+        # forward
+      #  print(im_data)
+      #  print(labels)
+      #  print(classes)
+        net(im_data, labels, classes, dont_care)
+        cnt+=1
+        # backward
+        loss = net.loss
+        bbox_loss += net.bbox_loss.data.cpu().numpy()[0]
+        iou_loss += net.iou_loss.data.cpu().numpy()[0]
+        cls_loss += net.cls_loss.data.cpu().numpy()[0]
+        train_loss += loss.data.cpu().numpy()[0]
+        train_loss /= cnt
+        bbox_loss /= cnt
+        iou_loss /= cnt
+        cls_loss /= cnt
+        print('average loss: ', train_loss)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+    
+
