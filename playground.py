@@ -46,17 +46,22 @@ for i in range(0, num_epochs):
     while(ds.hasMoreImages()):
     # batch
     
-        images, labels, classes = ds.getBatch(batch_size = 32)
+        images, labels, classes = ds.getBatch(batch_size = 4)
         im_data = torch.autograd.Variable(images).cuda()
         dont_care=np.array([[], [], [], [], [], [], [], [],
                            [], [], [], [], [], [], [], [],
                            [], [], [], [], [], [], [], [],
                            [], [], [], [], [], [], [], []])
         # forward
-      #  print(im_data)
-      #  print(labels)
-      #  print(classes)
-        net(im_data, labels, classes, dont_care)
+        print(im_data.data.size())
+        print(labels)
+        print(classes)
+        try:
+            net(im_data, labels, classes, dont_care)
+        except IndexError:
+            print("caught an exception")
+            continue
+            
         cnt+=1
         # backward
         loss = net.loss

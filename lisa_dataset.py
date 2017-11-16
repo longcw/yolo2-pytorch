@@ -171,17 +171,11 @@ class LISADataset():
         self.current_ix=0
     def hasMoreImages(self):
         return self.current_ix<self.images_file.shape[0]
-    def getBatch(self, batch_size = 8):
-        images = torch.FloatTensor(1,3,416,416)
-        temp = torch.FloatTensor(1,3,416,416)
-        classes = []
-        labels = []
-        batch_index = 0
-        local_fp, tensor, dx, dy, tags, class_id = self.dataPoint(self.current_ix)
+    def getImage(self):
+        local_fp, tensor, dx, dy, locations, class_id = self.dataPoint(self.current_ix)
         current_img_file = local_fp
-        images[0]=tensor.clone()
-        labels.append(np.array([tags]))
-        classes.append(np.array([class_id]))
+        locations = np.array([locations])
+        class_ids = np.array([class_id])
         while(True):
             self.current_ix = self.current_ix + 1
             if(self.current_ix>=self.images_file.shape[0]):
@@ -190,16 +184,23 @@ class LISADataset():
             if(img_file == current_img_file):
          #       print('file is the same')
                 tags, class_id = self.loadOnlyTags(self.current_ix, dx, dy)
-                labels[-1] = np.concatenate((labels[-1], [tags]))
-                classes[-1] = np.concatenate((classes[-1], np.array([class_id])))
+                locations = np.concatenate((locations, np.array([tags])))
+                class_ids = np.concatenate((class_ids, np.array([class_id])))
             else:
-                batch_index = batch_index + 1
-                if(batch_index>=batch_size):
-                    break
-                local_fp, tensor, dx, dy, tags, class_id = self.dataPoint(self.current_ix)
+                break
+        return tensor, locations, class_ids
+    def getBatch(self, batch_size = 8):
+        images = torch.FloatTensor(1,3,416,416)
+        temp = torch.FloatTensor(1,3,416,416)
+        labels = []
+        classes = []
+        for i in range(0, batch_size):
+            tensor, locations, class_ids = self.getImage()
+            if(i == 0):
+                images[0] = tensor.clone()
+            else:
                 temp[0]=tensor.clone()
                 images = torch.cat((images,temp))
-                current_img_file = local_fp
-                labels.append(np.array([tags]))
-                classes.append(np.array([class_id]))
+            labels.append(locations)
+            classes.append(class_ids)
         return images, labels, classes
