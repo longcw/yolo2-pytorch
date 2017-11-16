@@ -32,12 +32,11 @@ net.train()
 print('load net succ...')
 
 # optimizer
-num_epochs = 0
+num_epochs = 25
 
 lr = cfg.init_learning_rate
 optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=cfg.momentum, weight_decay=cfg.weight_decay)
 index = 0
-num_epochs = 25
 train_loss = 0
 bbox_loss, iou_loss, cls_loss = 0., 0., 0.
 batch_size = 16
@@ -75,5 +74,9 @@ for i in range(0, num_epochs):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-    
+
+        
+save_name = os.path.join('models', '{}_{}.h5'.format('retrained_yolo', num_epochs))
+net_utils.save_net(save_name, net)
+print('save model: {}'.format(save_name))
 
