@@ -1,12 +1,23 @@
 import os
-import csv
-from skimage import io, transform
-import pandas as pd
+import cv2
 import torch
 import numpy as np
-import cv2
-from torch.utils.data import Dataset
-from torchvision import transforms, utils
+import datetime
+from torch.multiprocessing import Pool
+import pandas as pd
+from darknet import Darknet19
+from datasets.pascal_voc import VOCDataset
+from utils import im_transform
+import utils.yolo as yolo_utils
+import utils.network as net_utils
+from utils.timer import Timer
+import cfgs.config as cfg
+try:
+   # 
+    from pycrayon import CrayonClient
+except ImportError:
+    CrayonClient = None
+
 def imcv2_recolor(im, a=.1):
     # t = [np.random.uniform()]
     # t += [np.random.uniform()]
@@ -155,14 +166,13 @@ class LISADataset():
         tags[3]=vals[1]
         tags = self.rescaleTags(tags,dx,dy)       
         return local_fp, tensor, dx, dy, tags, class_id
-    def getBatch(self, starting_index, batch_size = 8):
+    def getBatch(self, batch_size = 8):
         images = torch.FloatTensor(1,3,416,416)
         temp = torch.FloatTensor(1,3,416,416)
-        current_ix = starting_index
         classes = []
         labels = []
         batch_index = 0
-        local_fp, tensor, dx, dy, tags, class_id = self.dataPoint(current_ix)
+        local_fp, tensor, dx, dy, tags, class_id = self.dataPoint(self.current_ix)
         current_img_file = local_fp
         images[0]=tensor.clone()
         labels.append(np.array([tags]))
@@ -171,23 +181,20 @@ class LISADataset():
             current_ix = current_ix + 1
             if(current_ix>=self.images_file.shape[0]):
                 break
-            img_file =  self.images_file.ix[current_ix, 0]
+            img_file =  self.images_file.ix[self.current_ix, 0]
             if(img_file == current_img_file):
                 print('file is the same')
-                tags, class_id = self.loadOnlyTags(current_ix, dx, dy)
+                tags, class_id = self.loadOnlyTags(self.current_ix, dx, dy)
                 labels[-1] = np.concatenate((labels[-1], [tags]))
                 classes[-1] = np.concatenate((classes[-1], np.array([class_id])))
             else:
                 batch_index = batch_index + 1
                 if(batch_index>=batch_size):
                     break
-                local_fp, tensor, dx, dy, tags, class_id = self.dataPoint(current_ix)
+                local_fp, tensor, dx, dy, tags, class_id = self.dataPoint(self.current_ix)
                 temp[0]=tensor.clone()
                 images = torch.cat((images,temp))
                 current_img_file = local_fp
                 labels.append(np.array([tags]))
                 classes.append(np.array([class_id]))
-        return images, labels, classes     
-                
-
-
+        return images, labels, classes
