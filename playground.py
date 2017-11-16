@@ -192,6 +192,7 @@ class LISADataset():
         labels = []
         labels.append(np.array([tags]))
         classes.append(np.array([class_id]))
+
         batch_index = 0
         self.ix = self.ix + 1
         while(True):
@@ -210,10 +211,9 @@ class LISADataset():
                 tags[1]=vals[3]
                 tags[3]=vals[1]
                 tags = self.rescaleTags(tags,dx,dy)
-                np.concatenate((labels[-1], [tags]))
-                np.concatenate((classes[-1], np.array([class_id])))
-                print(classes)
-                print(labels)
+                labels[-1] = np.concatenate((labels[-1], [tags]))
+                classes[-1] = np.concatenate((classes[-1], np.array([class_id])))
+
             else:
                 batch_index = batch_index + 1
                 if(batch_index>=batch_size):
