@@ -130,7 +130,7 @@ class LISADataset():
                                     'doNotPass':46,
                                     'intersection':47
                                    }
-        self.ix = 0
+        self.current_ix = 0
     def toTensor(self, image):
 
         # swap color axis because
@@ -143,7 +143,7 @@ class LISADataset():
         tags[2] = int(float(tags[2])*dx)
         tags[1] = int(float(tags[1])*dy)
         tags[3] = int(float(tags[3])*dy)
-        return tags
+        return tags.astype(int)
     def rescaleImage(self, image, output_size):
 
         h, w = image.shape[:2]
@@ -170,106 +170,74 @@ class LISADataset():
         image, dx, dy = self.rescaleImage(image, (416,416))
         image_tensor = self.toTensor(image).float()
         return image_tensor, dx, dy
-    def nextBatch(self, batch_size = 8):
-        current_img_file = self.images_file.ix[self.ix, 0]
-        fp = os.path.join(self.root_dir, current_img_file)
-        print('loading: ' + fp)
-        tensor, dx, dy = self.fileToTensor(fp)
-        images = torch.FloatTensor(1,3,416,416)
-        images[0] = tensor.clone()
-        image_class = self.tags.ix[self.ix, 0]
+    def loadOnlyTags(self, ix, dx, dy):
+        image_class = self.tags.ix[ix, 0]
         class_id = self.category_name_to_id[image_class]
         #Annotation tag: Upper left corner X, Upper left corner Y, Lower right corner X, Lower right corner Y
-        vals = self.tags.ix[self.ix, 1:].as_matrix().astype('int')
+        vals = self.tags.ix[ix, 1:].as_matrix().astype(int)
         #Darknet wants x_bottom_left, y_bottom_left, x_top_right, and y_top_right
-        tags = np.zeros(4)
+        tags = np.zeros(4).astype(int)
         tags[0]=vals[0]
         tags[2]=vals[2]
         tags[1]=vals[3]
         tags[3]=vals[1]
         tags = self.rescaleTags(tags,dx,dy)
-        classes = []
-        labels = []
-        labels.append(np.array([tags]))
-        classes.append(np.array([class_id]))
-
-        batch_index = 0
-        self.ix = self.ix + 1
-        while(True):
-            
-            img_file =  self.images_file.ix[self.ix, 0]
-            if(img_file == current_img_file):
-                print('file is the same')
-                image_class = self.tags.ix[self.ix, 0]
-                class_id = self.category_name_to_id[image_class]
-                #Annotation tag: Upper left corner X, Upper left corner Y, Lower right corner X, Lower right corner Y
-                vals = self.tags.ix[self.ix, 1:].as_matrix().astype('int')
-                #Darknet wants x_bottom_left, y_bottom_left, x_top_right, and y_top_right
-                tags = np.zeros(4)
-                tags[0]=vals[0]
-                tags[2]=vals[2]
-                tags[1]=vals[3]
-                tags[3]=vals[1]
-                tags = self.rescaleTags(tags,dx,dy)
-                labels[-1] = np.concatenate((labels[-1], [tags]))
-                classes[-1] = np.concatenate((classes[-1], np.array([class_id])))
-
-            else:
-                batch_index = batch_index + 1
-                if(batch_index>=batch_size):
-                    break
-                current_img_file = img_file
-                fp = os.path.join(self.root_dir, current_img_file)
-                print('loading: ' + fp)
-                tensor, dx, dy = self.fileToTensor(fp)
-                temp = torch.FloatTensor(1,3,416,416)
-                temp[0]=tensor
-                images = torch.cat((images,temp))
-                image_class = self.tags.ix[self.ix, 0]
-                class_id = self.category_name_to_id[image_class]
-                #Annotation tag: Upper left corner X, Upper left corner Y, Lower right corner X, Lower right corner Y
-                vals = self.tags.ix[self.ix, 1:].as_matrix().astype('int')
-                #Darknet wants x_bottom_left, y_bottom_left, x_top_right, and y_top_right
-                tags = np.zeros(4)
-                tags[0]=vals[0]
-                tags[2]=vals[2]
-                tags[1]=vals[3]
-                tags[3]=vals[1]
-                tags = self.rescaleTags(tags,dx,dy)
-                labels.append(np.array([tags]))
-                classes.append(np.array([class_id]))
-            self.ix = self.ix + 1
-        return images, labels, classes     
-                
-            
-               
-    def __getitem__(self, idx):
-        img_name = os.path.join(self.root_dir, self.images_file.ix[idx, 0])
-        image = cv2.imread(img_name)
-        image = im_transform.imcv2_recolor(image)
-        image_class = self.tags.ix[idx, 0]
+        return tags, class_id
+    def dataPoint(self, ix, load_image=True): 
+        local_fp = self.images_file.ix[ix, 0]
+        fp = os.path.join(self.root_dir, local_fp)
+        print('loading: ' + fp)
+        tensor, dx, dy = self.fileToTensor(fp)
+        image_class = self.tags.ix[ix, 0]
+        class_id = self.category_name_to_id[image_class]
         #Annotation tag: Upper left corner X, Upper left corner Y, Lower right corner X, Lower right corner Y
-
-        vals = self.tags.ix[idx, 1:].as_matrix().astype('int')
+        vals = self.tags.ix[ix, 1:].as_matrix().astype(int)
         #Darknet wants x_bottom_left, y_bottom_left, x_top_right, and y_top_right
-        tags = np.zeros(4)
+        tags = np.zeros(4).astype(int)
         tags[0]=vals[0]
         tags[2]=vals[2]
         tags[1]=vals[3]
         tags[3]=vals[1]
-        sample = {'image': image, 'class': self.category_name_to_id[image_class], 'tags': tags}
-        if self.transform:
-            sample = self.transform(sample)
-
-        return sample
-
+        tags = self.rescaleTags(tags,dx,dy)       
+        return local_fp, tensor, dx, dy, tags, class_id
+    def nextBatch(self, batch_size = 8):
+        images = torch.FloatTensor(1,3,416,416)
+        temp = torch.FloatTensor(1,3,416,416)
+        classes = []
+        labels = []
+        batch_index = 0
+        local_fp, tensor, dx, dy, tags, class_id = self.dataPoint(self.current_ix)
+        current_img_file = local_fp
+        images[0]=tensor.clone()
+        labels.append(np.array([tags]))
+        classes.append(np.array([class_id]))
+        while(True):
+            self.current_ix = self.current_ix + 1
+            img_file =  self.images_file.ix[self.current_ix, 0]
+            if(img_file == current_img_file):
+                print('file is the same')
+                tags, class_id = self.loadOnlyTags(self.current_ix, dx, dy)
+                labels[-1] = np.concatenate((labels[-1], [tags]))
+                classes[-1] = np.concatenate((classes[-1], np.array([class_id])))
+            else:
+                batch_index = batch_index + 1
+                if(batch_index>=batch_size):
+                    break
+                local_fp, tensor, dx, dy, tags, class_id = self.dataPoint(self.current_ix)
+                temp[0]=tensor.clone()
+                images = torch.cat((images,temp))
+                current_img_file = local_fp
+                labels.append(np.array([tags]))
+                classes.append(np.array([class_id]))
+        return images, labels, classes     
+                
 
 images_file = 'datasets/LISA/allAnnotations.csv'
 tags_file = 'datasets/LISA/tags.csv'
 root_dir = 'datasets/LISA'
 ds = LISADataset(images_file, tags_file, root_dir)
-images, labels, classes = ds.nextBatch(batch_size = 4)
+images, labels, classes = ds.nextBatch(batch_size = 8)
 print(images)
-print(labels)
-print(classes)
+print(labels[0].shape)
+print(classes[0].shape)
 
