@@ -40,29 +40,27 @@ index = 0
 num_epochs = 25
 train_loss = 0
 bbox_loss, iou_loss, cls_loss = 0., 0., 0.
+batch_size = 16
 for i in range(0, num_epochs):
     ds.reset()
     cnt = 0
+    print('Epoch #: ', i)
     while(ds.hasMoreImages()):
     # batch
     
-        images, labels, classes = ds.getBatch(batch_size = 4)
+        images, labels, classes = ds.getBatch(batch_size = batch_size)
         im_data = torch.autograd.Variable(images).cuda()
         dont_care=np.array([[], [], [], [], [], [], [], [],
-                           [], [], [], [], [], [], [], [],
-                           [], [], [], [], [], [], [], [],
                            [], [], [], [], [], [], [], []])
         # forward
-        print(im_data.data.size())
-        print(labels)
-        print(classes)
+
         try:
             net(im_data, labels, classes, dont_care)
         except IndexError:
-            print("caught an exception")
             continue
             
-        cnt+=1
+            
+        cnt+=batch_size
         # backward
         loss = net.loss
         bbox_loss += net.bbox_loss.data.cpu().numpy()[0]
