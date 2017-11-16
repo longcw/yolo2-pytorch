@@ -101,7 +101,11 @@ models
 models/*
 data/*
 *.h5
+
 datasets/*.zip
 datasets/LISA/
 *.save
 VOCdevkit/
+
+*.tar
+
