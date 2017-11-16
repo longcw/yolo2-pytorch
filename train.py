@@ -75,9 +75,10 @@ for step in range(start_epoch * imdb.batch_per_epoch, cfg.max_epoch * imdb.batch
 
     # forward
     im_data = net_utils.np_to_variable(im, is_cuda=True, volatile=False).permute(0, 3, 1, 2)
-    print(im_data)
-    print(len(gt_boxes))
-    print(len(gt_classes))
+
+    print(im_data.toList())
+   
+    
     net(im_data, gt_boxes, gt_classes, dontcare)
 
     # backward
