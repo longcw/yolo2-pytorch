@@ -32,7 +32,7 @@ net.train()
 print('load net succ...')
 
 # optimizer
-num_epochs = 25
+num_epochs = 20
 
 lr = cfg.init_learning_rate
 optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=cfg.momentum, weight_decay=cfg.weight_decay)
@@ -46,16 +46,18 @@ for i in range(0, num_epochs):
     print('Epoch #: ', i)
     while(ds.hasMoreImages()):
     # batch
-    
-        images, labels, classes = ds.getBatch(batch_size = batch_size)
+        #break
+        try:
+            images, labels, classes = ds.getBatch(batch_size = batch_size)
+        except IndexError:
+            break
         im_data = torch.autograd.Variable(images).cuda()
         dont_care=np.array([[], [], [], [], [], [], [], [],
                            [], [], [], [], [], [], [], []])
         # forward
-
         try:
             net(im_data, labels, classes, dont_care)
-        except IndexError:
+        except:
             continue
             
             
@@ -74,9 +76,9 @@ for i in range(0, num_epochs):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
+       # break
         
-save_name = os.path.join('models', '{}_{}.h5'.format('retrained_yolo', num_epochs))
+save_name = os.path.join('models', '{}_{}.h5'.format('retrained_LISA_yolo', num_epochs))
 net_utils.save_net(save_name, net)
 print('save model: {}'.format(save_name))
 

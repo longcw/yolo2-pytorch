@@ -172,6 +172,8 @@ class LISADataset():
     def hasMoreImages(self):
         return self.current_ix<self.images_file.shape[0]
     def getImage(self):
+        if(self.current_ix>=self.images_file.shape[0]):
+            raise IndexError('no more')
         local_fp, tensor, dx, dy, locations, class_id = self.dataPoint(self.current_ix)
         current_img_file = local_fp
         locations = np.array([locations])
