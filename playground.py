@@ -20,9 +20,9 @@ images_file = 'datasets/LISA/allAnnotations.csv'
 tags_file = 'datasets/LISA/tags.csv'
 root_dir = 'datasets/LISA'
 ds = LISADataset(images_file, tags_file, root_dir)
-
+#ds.loadDataset()
 net = Darknet19()
-net_utils.load_net(cfg.trained_model, net)
+#net_utils.load_net(cfg.trained_model, net)
 # pretrained_model = os.path.join(cfg.train_output_dir, 'darknet19_voc07trainval_exp1_63.h5')
 # pretrained_model = cfg.trained_model
 # net_utils.load_net(pretrained_model, net)
@@ -37,12 +37,12 @@ num_epochs = 25
 lr = cfg.init_learning_rate
 optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=cfg.momentum, weight_decay=cfg.weight_decay)
 index = 0
-train_loss = 0
-bbox_loss, iou_loss, cls_loss = 0., 0., 0.
 batch_size = 16
 for i in range(0, num_epochs):
     ds.reset()
     cnt = 0
+    train_loss = 0
+    bbox_loss, iou_loss, cls_loss = 0., 0., 0.
     print('Epoch #: ', i)
     while(ds.hasMoreImages()):
     # batch
