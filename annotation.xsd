@@ -32,7 +32,7 @@
           </xs:complexType>
         </xs:element>
         <xs:element type="xs:byte" name="segmented"/>
-        <xs:element name="object">
+        <xs:element name="object" maxOccurs="unbounded" minOccurs="0">
           <xs:complexType>
             <xs:sequence>
               <xs:element type="xs:string" name="name"/>
@@ -43,7 +43,7 @@
                 <xs:complexType>
                   <xs:sequence>
                     <xs:element type="xs:short" name="xmin"/>
-                    <xs:element type="xs:byte" name="ymin"/>
+                    <xs:element type="xs:short" name="ymin"/>
                     <xs:element type="xs:short" name="xmax"/>
                     <xs:element type="xs:short" name="ymax"/>
                   </xs:sequence>
