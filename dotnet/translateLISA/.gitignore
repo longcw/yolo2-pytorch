@@ -1,2 +1,4 @@
 JPEGImages/
 Annotations/
+*.tar.gz
+inputImages/

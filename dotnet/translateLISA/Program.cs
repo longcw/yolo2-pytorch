@@ -10,6 +10,25 @@ namespace transateLISA
 {
     class Program
     {
+        static void writeImageToFiles(ref annotation currentAnnotation,uint imageNum, ref XmlSerializer ser,
+        ref LinkedList<annotationObject> currentObjects)
+        {
+             Image   im = Image.FromFile(Path.Combine("inputImages",currentAnnotation.filename));
+               currentAnnotation.size = new annotationSize();
+               currentAnnotation.size.height=(short)im.Height;
+               currentAnnotation.size.width=(short)im.Width;
+               currentAnnotation.size.depth=3;
+               currentAnnotation.@object= new annotationObject[currentObjects.Count];
+               currentObjects.CopyTo(currentAnnotation.@object,0);
+               currentObjects.Clear();
+             string  image_path = imageNum + ".jpg";
+               currentAnnotation.filename = image_path;
+              string  annotation_path =
+               Path.Combine(new string[]{"Annotations","" + imageNum +".xml"});
+              FileStream fs = new FileStream(annotation_path,FileMode.Create); 
+               ser.Serialize(fs,currentAnnotation);
+               im.Save(Path.Combine("JPEGImages",image_path));
+        }
         static void Main(string[] args)
         {
             LISACSVReader reader = new LISACSVReader("allFrames.csv");
@@ -17,37 +36,25 @@ namespace transateLISA
             LinkedList<annotationObject> currentObjects = new LinkedList<annotationObject>();
             annotation currentAnnotation = reader.ReadLine();
             currentObjects.AddLast(currentAnnotation.@object[0]);
-            FileStream fs;
-            
+           
             
             uint imageNum = 1;
-            do{
-            annotation read = reader.ReadLine();
-            if(read.filename.Equals(currentAnnotation.filename))
-            {
-                currentObjects.AddLast(read.@object[0]);
+            annotation read;
+            while(reader.Peek()>=0){
+                read = reader.ReadLine();
+                if(read.filename.Equals(currentAnnotation.filename))
+                {
+                    currentObjects.AddLast(read.@object[0]);
+                }
+                else
+                {
+                writeImageToFiles(ref currentAnnotation,imageNum,ref ser,ref currentObjects);
+                imageNum++;
+                currentAnnotation=read;
+                currentObjects.AddLast(currentAnnotation.@object[0]);
+                }
             }
-            else
-            {
-               Image im = Image.FromFile(Path.Combine("JPEGImages",currentAnnotation.filename));
-               currentAnnotation.size = new annotationSize();
-               currentAnnotation.size.height=(short)im.Height;
-               currentAnnotation.size.width=(short)im.Width;
-               currentAnnotation.@object= new annotationObject[currentObjects.Count];
-               currentObjects.CopyTo(currentAnnotation.@object,0);
-               currentObjects.Clear();
-               string outpath =
-               Path.Combine(new string[]{"Annotations","" + imageNum++ +".xml"});
-               fs = new FileStream(outpath,FileMode.CreateNew); 
-               ser.Serialize(fs,currentAnnotation);
-               currentAnnotation=read;
-               currentObjects.AddLast(currentAnnotation.@object[0]);
-            }
-
-
-            
-            }while(reader.Peek()>=0 && imageNum<4);
-            
+            writeImageToFiles(ref currentAnnotation,imageNum,ref ser,ref currentObjects);
         }
     }
 }

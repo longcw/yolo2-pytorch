@@ -113,3 +113,4 @@ VOCdevkit/
 #dotnet/
 bin/
 obj/
+.vscode/
