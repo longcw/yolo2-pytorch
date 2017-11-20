@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<annotation xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <folder>LISA</folder>
+  <filename>stop_1330545910.avi_image0.png</filename>
+  <source>
+    <annotation>Beep Bop Boolean Boogie.</annotation>
+    <flickrid>0</flickrid>
+  </source>
+  <owner>
+    <flickrid>asdf</flickrid>
+    <name>jkl;</name>
+  </owner>
+  <size>
+    <width>0</width>
+    <height>0</height>
+    <depth>0</depth>
+  </size>
+  <segmented>0</segmented>
+  <object>
+    <name>stop</name>
+    <pose>FORWARD!!!</pose>
+    <truncated>0</truncated>
+    <difficult>0</difficult>
+    <bndbox>
+      <xmin>862</xmin>
+      <ymin>104</ymin>
+      <xmax>916</xmax>
+      <ymax>158</ymax>
+    </bndbox>
+  </object>
+</annotation>

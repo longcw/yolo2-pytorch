@@ -4,7 +4,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+.~lock.~lock
 # C extensions
 *.so
 *.tar
@@ -26,6 +26,8 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+*~.lock
+.~lock*
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -108,4 +110,6 @@ datasets/LISA/
 VOCdevkit/
 
 *.tar
-dotnet/
+#dotnet/
+bin/
+obj/

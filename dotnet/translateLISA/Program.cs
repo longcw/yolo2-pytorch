@@ -3,48 +3,51 @@ using System.Xml;
 using System.Xml.Serialization;
 using System.IO;
 using Schemas;
+using System.Drawing;
+using translateLISA;
+using System.Collections.Generic;
 namespace transateLISA
 {
     class Program
     {
         static void Main(string[] args)
         {
+            LISACSVReader reader = new LISACSVReader("allFrames.csv");
             XmlSerializer ser = new XmlSerializer(typeof(annotation));
-            annotation blargh = new annotation();
-            blargh.filename="test_output.jpg";
-            blargh.folder="dat_data";
-            blargh.owner = new annotationOwner();
-            blargh.owner.name="Trent";
-            blargh.owner.flickrid="Beep Bop Boolean Boogie";
-            blargh.segmented=1;
-            /* */
-            blargh.size=new annotationSize(); 
-            blargh.size.depth=3;
-            blargh.size.height=101;
-            blargh.size.width=1337;
+            LinkedList<annotationObject> currentObjects = new LinkedList<annotationObject>();
+            annotation currentAnnotation = reader.ReadLine();
+            currentObjects.AddLast(currentAnnotation.@object[0]);
+            FileStream fs;
             
-            blargh.source=new annotationSource();
-            blargh.source.annotation = "wtf is this?";
-            blargh.source.database="Dat db.";
-            blargh.source.flickrid=7;
-            blargh.source.image="Edgy";
-
-            blargh.@object = new annotationObject[2];
-            Console.WriteLine(blargh.@object.Length);
-            blargh.@object[0]=new annotationObject();
-
-            blargh.@object[0].bndbox=new annotationObjectBndbox();
-            blargh.@object[0].bndbox.xmin=1;
-            blargh.@object[0].bndbox.ymin=2;
-            blargh.@object[0].bndbox.xmax=3;
-            blargh.@object[0].bndbox.ymax=4;
-            blargh.@object[0].difficult=1;
-            blargh.@object[0].name="asdf";
-            blargh.@object[0].pose="FORWARD!!!";
-            blargh.@object[0].truncated=0;
             
-            FileStream out_fs = new FileStream("test_output.xml",FileMode.Create);
-            ser.Serialize(out_fs,blargh);
+            uint imageNum = 1;
+            do{
+            annotation read = reader.ReadLine();
+            if(read.filename.Equals(currentAnnotation.filename))
+            {
+                currentObjects.AddLast(read.@object[0]);
+            }
+            else
+            {
+               Image im = new Bitmap(Path.Combine("JPEGImages",currentAnnotation.filename));
+               currentAnnotation.size = new annotationSize();
+               currentAnnotation.size.height=(short)im.Height;
+               currentAnnotation.size.width=(short)im.Width;
+               currentAnnotation.@object= new annotationObject[currentObjects.Count];
+               currentObjects.CopyTo(currentAnnotation.@object,0);
+               currentObjects.Clear();
+               string outpath =
+               Path.Combine(new string[]{"Annotations",""+imageNum+".xml"});
+               fs = new FileStream(outpath,FileMode.CreateNew); 
+               ser.Serialize(fs,currentAnnotation);
+               currentAnnotation=read;
+               currentObjects.AddLast(currentAnnotation.@object[0]);
+            }
+
+
+            
+            }while(reader.Peek()>=0 && imageNum<4);
+            
         }
     }
 }
