@@ -34,7 +34,8 @@ namespace translateLISA
             annotation rtn = new annotation();
             uint index;
             index_dictionary.TryGetValue("Filename",out index);
-            rtn.filename=vals[index];
+            string png_name = vals[index];
+            rtn.filename=png_name.Substring(0,png_name.Length-4)+".jpg";
             rtn.@object=new annotationObject[1];
             rtn.@object[0] = new annotationObject();
             rtn.@object[0].pose="FORWARD!!!";

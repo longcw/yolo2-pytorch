@@ -29,7 +29,7 @@ namespace transateLISA
             }
             else
             {
-               Image im = new Bitmap(Path.Combine("JPEGImages",currentAnnotation.filename));
+               Image im = Image.FromFile(Path.Combine("JPEGImages",currentAnnotation.filename));
                currentAnnotation.size = new annotationSize();
                currentAnnotation.size.height=(short)im.Height;
                currentAnnotation.size.width=(short)im.Width;
@@ -37,7 +37,7 @@ namespace transateLISA
                currentObjects.CopyTo(currentAnnotation.@object,0);
                currentObjects.Clear();
                string outpath =
-               Path.Combine(new string[]{"Annotations",""+imageNum+".xml"});
+               Path.Combine(new string[]{"Annotations","" + imageNum++ +".xml"});
                fs = new FileStream(outpath,FileMode.CreateNew); 
                ser.Serialize(fs,currentAnnotation);
                currentAnnotation=read;
