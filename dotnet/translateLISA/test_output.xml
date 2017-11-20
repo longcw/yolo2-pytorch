@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<annotation xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <folder>dat_data</folder>
+  <filename>test_output.jpg</filename>
+  <source>
+    <database>Dat db.</database>
+    <annotation>wtf is this?</annotation>
+    <image>Edgy</image>
+    <flickrid>7</flickrid>
+  </source>
+  <owner>
+    <flickrid>Beep Bop Boolean Boogie</flickrid>
+    <name>Trent</name>
+  </owner>
+  <size>
+    <width>1337</width>
+    <height>101</height>
+    <depth>3</depth>
+  </size>
+  <segmented>1</segmented>
+  <object>
+    <name>asdf</name>
+    <pose>FORWARD!!!</pose>
+    <truncated>0</truncated>
+    <difficult>1</difficult>
+    <bndbox>
+      <xmin>1</xmin>
+      <ymin>2</ymin>
+      <xmax>3</xmax>
+      <ymax>4</ymax>
+    </bndbox>
+  </object>
+</annotation>
