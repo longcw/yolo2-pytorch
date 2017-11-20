@@ -25,7 +25,7 @@ imdb = VOCDataset(cfg.imdb_train, cfg.DATA_DIR, 4,
 print('load data succ...')
 
 net = Darknet19()
-net_utils.load_net(cfg.trained_model, net)
+#net_utils.load_net(cfg.trained_model, net)
 # pretrained_model = os.path.join(cfg.train_output_dir, 'darknet19_voc07trainval_exp1_63.h5')
 # pretrained_model = cfg.trained_model
 # net_utils.load_net(pretrained_model, net)

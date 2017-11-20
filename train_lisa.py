@@ -7,7 +7,7 @@ from torch.multiprocessing import Pool
 
 from darknet import Darknet19
 
-from datasets.pascal_voc import VOCDataset
+from datasets.pascal_lisa import PascalLISADataset
 import utils.yolo as yolo_utils
 import utils.network as net_utils
 from utils.timer import Timer
@@ -20,12 +20,11 @@ except ImportError:
 
 
 # data loader
-imdb = VOCDataset(cfg.imdb_train, cfg.DATA_DIR, 4,
-                  yolo_utils.preprocess_train, processes=2, shuffle=True, dst_size=cfg.inp_size)
+imdb = PascalLISADataset("LISA","data", 4, yolo_utils.preprocess_train, processes=2, shuffle=True, dst_size=cfg.inp_size)
 print('load data succ...')
 
 net = Darknet19()
-net_utils.load_net(cfg.trained_model, net)
+#net_utils.load_net(cfg.trained_model, net)
 # pretrained_model = os.path.join(cfg.train_output_dir, 'darknet19_voc07trainval_exp1_63.h5')
 # pretrained_model = cfg.trained_model
 # net_utils.load_net(pretrained_model, net)
@@ -63,6 +62,7 @@ bbox_loss, iou_loss, cls_loss = 0., 0., 0.
 cnt = 0
 t = Timer()
 step_cnt = 0
+
 for step in range(start_epoch * imdb.batch_per_epoch, cfg.max_epoch * imdb.batch_per_epoch):
     t.tic()
     # batch
@@ -76,7 +76,7 @@ for step in range(start_epoch * imdb.batch_per_epoch, cfg.max_epoch * imdb.batch
     # forward
     im_data = net_utils.np_to_variable(im, is_cuda=True, volatile=False).permute(0, 3, 1, 2)
 
-    print(im_data.toList())
+   # print(im_data.data)
    
     
     net(im_data, gt_boxes, gt_classes, dontcare)
