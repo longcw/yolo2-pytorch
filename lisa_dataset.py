@@ -143,29 +143,20 @@ class LISADataset():
         #Annotation tag: Upper left corner X, Upper left corner Y, Lower right corner X, Lower right corner Y
         vals = self.tags.ix[ix, 1:].as_matrix().astype(int)
         #Darknet wants x_bottom_left, y_bottom_left, x_top_right, and y_top_right
-       # tags = np.zeros(4).astype(int)
-       # tags[0]=vals[0]
-       # tags[2]=vals[2]
-       # tags[1]=vals[3]
-       # tags[3]=vals[1]
+
         tags=vals
         tags = self.rescaleTags(tags,dx,dy)
         return tags, class_id
     def dataPoint(self, ix, load_image=True): 
         local_fp = self.images_file.ix[ix, 0]
         fp = os.path.join(self.root_dir, local_fp)
-    #    print('loading: ' + fp)
+        print('loading: ' + fp)
         tensor, dx, dy = self.fileToTensor(fp)
         image_class = self.tags.ix[ix, 0]
         class_id = self.category_name_to_id[image_class]
         #Annotation tag: Upper left corner X, Upper left corner Y, Lower right corner X, Lower right corner Y
         vals = self.tags.ix[ix, 1:].as_matrix().astype(int)
-        #Darknet wants x_bottom_left, y_bottom_left, x_top_right, and y_top_right
-     #   tags = np.zeros(4).astype(int)
-     #   tags[0]=vals[0]
-      #  tags[2]=vals[2]
-      #  tags[1]=vals[3]
-       # tags[3]=vals[1]
+
         tags=vals
         tags = self.rescaleTags(tags,dx,dy)       
         return local_fp, tensor, dx, dy, tags, class_id
