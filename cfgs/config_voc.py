@@ -2,7 +2,7 @@ import numpy as np
 
 
 # trained model
-h5_fname = 'yolo-voc.weights.h5'
+h5_fname = 'yolo_lisa_pascal_with_greyscale_images_91.h5'
 
 # VOC
 label_names =('stop',

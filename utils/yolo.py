@@ -101,7 +101,7 @@ def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg, thresh=0.05):
     prob_pred: (bsize, HxW, num_anchors, num_classes)
     """
 
-    num_classes, num_anchors = cfg.num_classes, cfg.num_anchors
+    num_classes, num_anchors = 47, 5
     anchors = cfg.anchors
     W, H = cfg.out_size
     assert bbox_pred.shape[0] == 1, 'postprocess only support one image per batch'
@@ -116,7 +116,7 @@ def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg, thresh=0.05):
     bbox_pred = bbox_pred.astype(np.int)
 
     iou_pred = np.reshape(iou_pred, [-1])
-    prob_pred = np.reshape(prob_pred, [-1, num_classes])
+    prob_pred = np.reshape(prob_pred, [-1, 47])
 
     cls_inds = np.argmax(prob_pred, axis=1)
     prob_pred = prob_pred[(np.arange(prob_pred.shape[0]), cls_inds)]
@@ -132,7 +132,7 @@ def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg, thresh=0.05):
 
     # NMS
     keep = np.zeros(len(bbox_pred), dtype=np.int)
-    for i in range(num_classes):
+    for i in range(47):
         inds = np.where(cls_inds == i)[0]
         if len(inds) == 0:
             continue

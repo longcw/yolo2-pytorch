@@ -83,6 +83,7 @@ class PascalLISADataset(ImageDataset):
                        'use_salt': True}
 
         self.load_dataset()
+        #self.num_classes=47
         # self.im_processor = partial(process_im, image_names=self._image_names, annotations=self._annotations)
         # self.im_processor = preprocess_train
 

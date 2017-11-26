@@ -8,7 +8,7 @@ from darknet import Darknet19
 import utils.yolo as yolo_utils
 import utils.network as net_utils
 from utils.timer import Timer
-from datasets.pascal_voc import VOCDataset
+
 from datasets.pascal_lisa import PascalLISADataset
 
 import cfgs.config as cfg
@@ -21,15 +21,12 @@ def preprocess(fname):
     return image, im_data
 
 
-# hyper-parameters
-# ------------
-# trained_model = cfg.trained_model
-trained_model = os.path.join('models', 'yolo_lisa_pascal_with_greyscale_images_91.h5')
+
 output_dir = 'test_results'
 
 max_per_image = 300
-thresh = 0.01
-vis = False
+thresh = 0.3
+vis = True
 # ------------
 
 
@@ -40,26 +37,27 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
     #    all_boxes[cls][image] = N x 5 array of detections in
     #    (x1, y1, x2, y2, score)
     all_boxes = [[[] for _ in xrange(num_images)]
-                 for _ in xrange(imdb.num_classes)]
+                 for _ in xrange(47)]
 
     # timers
     _t = {'im_detect': Timer(), 'misc': Timer()}
-    det_file = os.path.join(output_dir, 'detections.pkl')
+    #det_file = os.path.join(output_dir, 'detections.pkl')
 
-    for i in range(num_images):
+    for i in range(0, num_images):
         print('testing on the ' + str(i+1) + 'th batch')
         batch = imdb.next_batch()
         ori_im = batch['origin_im'][0]
-        im_data = net_utils.np_to_variable(batch['images'], is_cuda=True, volatile=True).permute(0, 3, 1, 2)
+        im_data = net_utils.np_to_variable(batch['images'], is_cuda=False, volatile=True).permute(0, 3, 1, 2)
         print("got im_data")
         _t['im_detect'].tic()
+	print(im_data.size())
+        #print(im_data)
         bbox_pred, iou_pred, prob_pred = net(im_data)
 
         # to numpy
         bbox_pred = bbox_pred.data.cpu().numpy()
         iou_pred = iou_pred.data.cpu().numpy()
         prob_pred = prob_pred.data.cpu().numpy()
-
         bboxes, scores, cls_inds = yolo_utils.postprocess(bbox_pred, iou_pred, prob_pred, ori_im.shape, cfg, thresh)
         detect_time = _t['im_detect'].toc()
 
@@ -103,17 +101,17 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
 
     print 'Evaluating detections'
     imdb.evaluate_detections(all_boxes, output_dir)
-
+       
 
 if __name__ == '__main__':
     # data loader
-    imdb = PascalLISADataset("LISA","data", 1, yolo_utils.preprocess_test, processes=2, shuffle=False, dst_size=cfg.inp_size)
+    imdb = PascalLISADataset("LISA","data", 1, yolo_utils.preprocess_test, processes=1, shuffle=True, dst_size=cfg.inp_size)
     print('load data succ...')
 
     net = Darknet19()
-    net_utils.load_net(trained_model, net)
+    net_utils.load_net(os.path.join('models', 'yolo_lisa_pascal_with_greyscale_images_91.h5'), net)
     print('load net succ...')
-    net.cuda()
+   # net.cuda()
     net.eval()
 
     test_net(net, imdb, max_per_image, thresh, vis)
