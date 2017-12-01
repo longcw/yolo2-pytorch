@@ -114,3 +114,4 @@ VOCdevkit/
 bin/
 obj/
 .vscode/
+output_images/
