@@ -25,7 +25,7 @@ def preprocess(fname):
 output_dir = 'test_results'
 
 max_per_image = 300
-thresh = 0.3
+thresh = 0.2
 vis = True
 # ------------
 
@@ -109,7 +109,7 @@ if __name__ == '__main__':
     print('load data succ...')
 
     net = Darknet19()
-    net_utils.load_net(os.path.join('models', 'yolo_lisa_pascal_with_greyscale_images_91.h5'), net)
+    net_utils.load_net(os.path.join('lisa_models', 'yolo_lisa_with_synthetic_data_99.h5'), net)
     print('load net succ...')
    # net.cuda()
     net.eval()

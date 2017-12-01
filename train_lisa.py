@@ -20,7 +20,7 @@ except ImportError:
 
 
 # data loader
-imdb = PascalLISADataset("LISA","data", 4, yolo_utils.preprocess_train, processes=2, shuffle=True, dst_size=cfg.inp_size)
+imdb = PascalLISADataset("LISA","data", 32, yolo_utils.preprocess_train, processes=4, shuffle=True, dst_size=cfg.inp_size)
 print('load data succ...')
 
 net = Darknet19()
@@ -114,12 +114,12 @@ for step in range(start_epoch * imdb.batch_per_epoch, cfg.max_epoch * imdb.batch
         cnt = 0
         t.clear()
 
-    if step > 0 and (step % imdb.batch_per_epoch == 0):
+    if step > 0 and ((step % (imdb.batch_per_epoch)) == 0):
         if imdb.epoch in cfg.lr_decay_epochs:
             lr *= cfg.lr_decay
             optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=cfg.momentum, weight_decay=cfg.weight_decay)
 
-        save_name = os.path.join(cfg.train_output_dir, '{}_{}.h5'.format(cfg.exp_name, imdb.epoch))
+        save_name = os.path.join('lisa_models', '{}_{}.h5'.format('yolo_lisa_with_synthetic_data', imdb.epoch))
         net_utils.save_net(save_name, net)
         print('save model: {}'.format(save_name))
         step_cnt = 0

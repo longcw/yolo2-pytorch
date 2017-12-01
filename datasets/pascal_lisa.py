@@ -24,27 +24,27 @@ class PascalLISADataset(ImageDataset):
         assert os.path.exists(self._devkit_path), 'LISA path does not exist: {}'.format(self._devkit_path)
         assert os.path.exists(self._data_path), 'Path does not exist: {}'.format(self._data_path)
 
-        self._classes  =  map(str.lower,('stop',
-              'speedlimiturdbl',
-              'speedlimit25',
+        self._classes  =  ('stop',
+              'speedLimitUrdbl',
+              'speedLimit25',
               'pedestrianCrossing',
-              'speedlimit35',
-              'turnleft',
+              'speedLimit35',
+              'turnLeft',
               'slow',
-              'speedlimit15',
-              'speedlimit45',
-              'rightlaneMustTurn',
-              'signalahead',
-              'keepright',
-              'laneends',
+              'speedLimit15',
+              'speedLimit45',
+              'rightLaneMustTurn',
+              'signalAhead',
+              'keepRight',
+              'laneEnds',
               'school',
               'merge',
-              'addedlane',
-              'rampspeedadvisory40',
-              'rampspeedadvisory45',
-              'curveright',
-              'speedlimit65',
-              'truckspeedlimit55',
+              'addedLane',
+              'rampSpeedAdvisory40',
+              'rampSpeedAdvisory45',
+              'curveRight',
+              'speedLimit65',
+              'truckSpeedLimit55',
               'thruMergeLeft',
               'speedLimit30',
               'stopAhead',
@@ -71,7 +71,7 @@ class PascalLISADataset(ImageDataset):
               'speedLimit55',
               'doNotPass',
               'intersection'
-             ))
+             )
         self._class_to_ind = dict(zip(self.classes, range(self.num_classes)))
         self._image_ext = '.jpg'
 
@@ -124,7 +124,7 @@ class PascalLISADataset(ImageDataset):
 
     def _load_image_set_index(self):
 
-        return np.linspace(1,6618,6618).astype(int).tolist()
+        return np.linspace(1,9618,9618).astype(int).tolist()
 
     def _load_pascal_annotations(self):
         """
@@ -185,7 +185,7 @@ class PascalLISADataset(ImageDataset):
             difficult = 0 if diffc == None else int(diffc.text)
             ishards[ix] = difficult
 
-            cls = self._class_to_ind[obj.find('name').text.lower().strip()]
+            cls = self._class_to_ind[obj.find('name').text.strip()]
             boxes[ix, :] = [x1, y1, x2, y2]
             gt_classes[ix] = cls
             overlaps[ix, cls] = 1.0
