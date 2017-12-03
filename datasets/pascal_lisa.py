@@ -15,12 +15,16 @@ from voc_eval import voc_eval
 
 
 class PascalLISADataset(ImageDataset):
-    def __init__(self, imdb_name, datadir, batch_size, im_processor, processes=3, shuffle=True, dst_size=None):
+    def __init__(self, imdb_name, datadir, batch_size, im_processor, processes=3, shuffle=True, dst_size=None, val=False):
         super(PascalLISADataset, self).__init__(imdb_name, datadir, batch_size, im_processor, processes, shuffle, dst_size)
         self._year = 2007
         self._image_set = []
+        self.val=val
         self._devkit_path = os.path.join(datadir, 'VOCdevkit{}'.format(self._year))
-        self._data_path = os.path.join(datadir, 'LISA{}'.format(self._year))
+        if(val):
+            self._data_path = os.path.join(datadir, 'LISA{}'.format(self._year), 'val')
+        else:
+            self._data_path = os.path.join(datadir, 'LISA{}'.format(self._year), 'train')
         assert os.path.exists(self._devkit_path), 'LISA path does not exist: {}'.format(self._devkit_path)
         assert os.path.exists(self._data_path), 'Path does not exist: {}'.format(self._data_path)
 
@@ -124,7 +128,10 @@ class PascalLISADataset(ImageDataset):
 
     def _load_image_set_index(self):
 
-        return np.linspace(1,9618,9618).astype(int).tolist()
+        if(self.val):
+            return np.linspace(1,1569,1569).astype(int).tolist()
+        else:
+            return np.linspace(1,9284,9284).astype(int).tolist()
 
     def _load_pascal_annotations(self):
         """

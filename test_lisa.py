@@ -111,7 +111,7 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
 
 if __name__ == '__main__':
     # data loader
-    imdb = PascalLISADataset("LISA","data", 1, yolo_utils.preprocess_test, processes=1, shuffle=True, dst_size=cfg.inp_size)
+    imdb = PascalLISADataset("LISA","data", 1, yolo_utils.preprocess_test, processes=1, shuffle=True, dst_size=cfg.inp_size, val=True)
     print('load data succ...')
 
     net = Darknet19()
