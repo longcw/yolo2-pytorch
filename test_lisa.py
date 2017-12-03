@@ -29,9 +29,9 @@ thresh = 0.5
 vis = False
 # ------------
 cuda = True
-
+det_file = os.path.join('test_results', 'detections.pkl')
 def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
-    num_images = 100
+    num_images = 1569
 
     # all detections are collected into:
     #    all_boxes[cls][image] = N x 5 array of detections in
@@ -47,47 +47,25 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
         print('testing on the ' + str(i+1) + 'th batch')
         batch = imdb.next_batch()
         ori_im = batch['origin_im'][0]
+        gt_boxes = batch['gt_boxes']
+        gt_classes = batch['gt_classes']
         im_data = net_utils.np_to_variable(batch['images'], is_cuda=cuda, volatile=True).permute(0, 3, 1, 2)
-        print("got im_data")
+       # print("got im_data")
         _t['im_detect'].tic()
-	print(im_data.size())
+    ##    print(im_data.size())
         #print(im_data)
         bbox_pred, iou_pred, prob_pred = net(im_data)
-
         # to numpy
         bbox_pred = bbox_pred.data.cpu().numpy()
         iou_pred = iou_pred.data.cpu().numpy()
         prob_pred = prob_pred.data.cpu().numpy()
         bboxes, scores, cls_inds = yolo_utils.postprocess(bbox_pred, iou_pred, prob_pred, ori_im.shape, cfg, thresh)
-        detect_time = _t['im_detect'].toc()
-
-        _t['misc'].tic()
-
-        for j in range(imdb.num_classes):
-            inds = np.where(cls_inds == j)[0]
-            if len(inds) == 0:
-                all_boxes[j][i] = np.empty([0, 5], dtype=np.float32)
-                continue
-            c_bboxes = bboxes[inds]
-            c_scores = scores[inds]
-            c_dets = np.hstack((c_bboxes, c_scores[:, np.newaxis])).astype(np.float32, copy=False)
-            all_boxes[j][i] = c_dets
-
-        # Limit to max_per_image detections *over all classes*
-        if max_per_image > 0:
-            image_scores = np.hstack([all_boxes[j][i][:, -1] for j in range(imdb.num_classes)])
-            if len(image_scores) > max_per_image:
-                image_thresh = np.sort(image_scores)[-max_per_image]
-                for j in xrange(1, imdb.num_classes):
-                    keep = np.where(all_boxes[j][i][:, -1] >= image_thresh)[0]
-                    all_boxes[j][i] = all_boxes[j][i][keep, :]
-        nms_time = _t['misc'].toc()
-
-        if i % 20 == 0:
-            print 'im_detect: {:d}/{:d} {:.3f}s {:.3f}s' \
-                .format(i + 1, num_images, detect_time, nms_time)
-            _t['im_detect'].clear()
-            _t['misc'].clear()
+        print('Predicted boxes: ', bboxes)
+        print('Predicted classes: ', cls_inds)
+        
+        
+        #print('Ground truth boxes: ', gt_boxes)
+        #print('Ground truth classes: ', gt_classes)
 
         if vis:
             im2show = yolo_utils.draw_detection(ori_im, bboxes, scores, cls_inds, cfg, thr=0.1)
@@ -102,13 +80,10 @@ def test_net(net, imdb, max_per_image=300, thresh=0.5, vis=False):
             output_path=os.path.join('output_images','test_image_'+str(i)+'.jpg')
             cv2.imwrite(output_path,im2show)
 
-    with open(det_file, 'wb') as f:
-        cPickle.dump(all_boxes, f, cPickle.HIGHEST_PROTOCOL)
-
-    print 'Evaluating detections'
-    imdb.evaluate_detections(all_boxes, output_dir)
        
 
+
+    
 if __name__ == '__main__':
     # data loader
     imdb = PascalLISADataset("LISA","data", 1, yolo_utils.preprocess_test, processes=1, shuffle=True, dst_size=cfg.inp_size, val=True)
