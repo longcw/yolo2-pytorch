@@ -7,7 +7,7 @@ from torch.multiprocessing import Pool
 
 from darknet import Darknet19
 
-from datasets.pascal_voc import VOCDataset
+from datasets.pascal_lisa import PascalLISADataset
 import utils.yolo as yolo_utils
 import utils.network as net_utils
 from utils.timer import Timer
@@ -20,8 +20,7 @@ except ImportError:
 
 
 # data loader
-imdb = VOCDataset(cfg.imdb_train, cfg.DATA_DIR, 4,
-                  yolo_utils.preprocess_train, processes=2, shuffle=True, dst_size=cfg.inp_size)
+imdb = PascalLISADataset("LISA","data", 32, yolo_utils.preprocess_train, processes=4, shuffle=True, dst_size=cfg.inp_size)
 print('load data succ...')
 
 net = Darknet19()
@@ -77,7 +76,7 @@ for step in range(start_epoch * imdb.batch_per_epoch, cfg.max_epoch * imdb.batch
     # forward
     im_data = net_utils.np_to_variable(im, is_cuda=True, volatile=False).permute(0, 3, 1, 2)
 
-    print(im_data.toList())
+   # print(im_data.data)
    
     
     net(im_data, gt_boxes, gt_classes, dontcare)
@@ -115,12 +114,12 @@ for step in range(start_epoch * imdb.batch_per_epoch, cfg.max_epoch * imdb.batch
         cnt = 0
         t.clear()
 
-    if step > 0 and (step % imdb.batch_per_epoch == 0):
+    if step > 0 and ((step % (imdb.batch_per_epoch)) == 0):
         if imdb.epoch in cfg.lr_decay_epochs:
             lr *= cfg.lr_decay
             optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=cfg.momentum, weight_decay=cfg.weight_decay)
 
-        save_name = os.path.join(cfg.train_output_dir, '{}_{}.h5'.format(cfg.exp_name, imdb.epoch))
+        save_name = os.path.join('lisa_models', '{}_{}.h5'.format('yolo_lisa_with_synthetic_data', imdb.epoch))
         net_utils.save_net(save_name, net)
         print('save model: {}'.format(save_name))
         step_cnt = 0

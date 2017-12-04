@@ -4,10 +4,10 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+.~lock.~lock
 # C extensions
 *.so
-
+*.tar
 # Distribution / packaging
 .Python
 env/
@@ -26,6 +26,8 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+*~.lock
+.~lock*
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -100,3 +102,17 @@ ENV/
 models
 models/*
 data/*
+*.h5
+
+datasets/*.zip
+datasets/LISA/
+*.save
+VOCdevkit/
+
+*.tar
+#dotnet/
+bin/
+obj/
+.vscode/
+output_images/
+test_results/
