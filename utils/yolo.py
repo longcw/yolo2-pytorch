@@ -1,7 +1,6 @@
 import cv2
-import os
 import numpy as np
-from im_transform import imcv2_affine_trans, imcv2_recolor
+from .im_transform import imcv2_affine_trans, imcv2_recolor
 # from box import BoundBox, box_iou, prob_compare
 from utils.nms_wrapper import nms
 from utils.cython_yolo import yolo_to_bbox
@@ -49,8 +48,9 @@ def _offset_boxes(boxes, im_shape, scale, offs, flip):
     return boxes
 
 
-def preprocess_train(data):
+def preprocess_train(data, size_index):
     im_path, blob, inp_size = data
+    inp_size = inp_size[size_index]
     boxes, gt_classes = blob['boxes'], blob['gt_classes']
 
     im = cv2.imread(im_path)
@@ -78,10 +78,11 @@ def preprocess_train(data):
     return im, boxes, gt_classes, [], ori_im
 
 
-def preprocess_test(data):
+def preprocess_test(data, size_index):
 
     im, _, inp_size = data
-    if isinstance(im, (str, unicode)):
+    inp_size = inp_size[size_index]
+    if isinstance(im, str):
         im = cv2.imread(im)
     ori_im = np.copy(im)
 
@@ -94,17 +95,20 @@ def preprocess_test(data):
     return im, [], [], [], ori_im
 
 
-def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg, thresh=0.05):
+def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg, thresh=0.05,
+                size_index=0):
     """
-    bbox_pred: (bsize, HxW, num_anchors, 4) ndarray of float (sig(tx), sig(ty), exp(tw), exp(th))
+    bbox_pred: (bsize, HxW, num_anchors, 4)
+               ndarray of float (sig(tx), sig(ty), exp(tw), exp(th))
     iou_pred: (bsize, HxW, num_anchors, 1)
     prob_pred: (bsize, HxW, num_anchors, num_classes)
     """
 
-    num_classes, num_anchors = cfg.num_classes, cfg.num_anchors
+    # num_classes, num_anchors = cfg.num_classes, cfg.num_anchors
+    num_classes = cfg.num_classes
     anchors = cfg.anchors
-    W, H = cfg.out_size
-    assert bbox_pred.shape[0] == 1, 'postprocess only support one image per batch'
+    W, H = cfg.multi_scale_out_size[size_index]
+    assert bbox_pred.shape[0] == 1, 'postprocess only support one image per batch'  # noqa
 
     bbox_pred = yolo_to_bbox(
         np.ascontiguousarray(bbox_pred, dtype=np.float),
@@ -128,7 +132,6 @@ def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg, thresh=0.05):
     bbox_pred = bbox_pred[keep]
     scores = scores[keep]
     cls_inds = cls_inds[keep]
-    # print scores.shape
 
     # NMS
     keep = np.zeros(len(bbox_pred), dtype=np.int)
@@ -189,7 +192,11 @@ def get_bbox_targets(images, gt_boxes, cls_inds, dontcares, cfg):
     bbox_targets = []
     cls_targets = []
     for i, im in enumerate(images):
-        bbox_target, cls_target = _bbox_targets_perimage(im.shape, gt_boxes[i], cls_inds[i], dontcares[i], cfg)
+        bbox_target, cls_target = _bbox_targets_perimage(im.shape,
+                                                         gt_boxes[i],
+                                                         cls_inds[i],
+                                                         dontcares[i],
+                                                         cfg)
         bbox_targets.append(bbox_target)
         cls_targets.append(cls_target)
     return bbox_targets, cls_targets

@@ -14,8 +14,11 @@ from Cython.Distutils import build_ext
 
 
 def find_in_path(name, path):
-    "Find a file in a search path"
-    # adapted fom http://code.activestate.com/recipes/52224-find-a-file-given-a-search-path/
+    """
+    Find a file in a search path
+    adapted fom
+    http://code.activestate.com/recipes/52224-find-a-file-given-a-search-path/
+    """
     for dir in path.split(os.pathsep):
         binpath = pjoin(dir, name)
         if os.path.exists(binpath):
@@ -40,18 +43,22 @@ def locate_cuda():
     else:
         # otherwise, search the PATH for NVCC
         default_path = pjoin(os.sep, 'usr', 'local', 'cuda', 'bin')
-        nvcc = find_in_path('nvcc', os.environ['PATH'] + os.pathsep + default_path)
+        nvcc = find_in_path('nvcc',
+                            os.environ['PATH'] + os.pathsep + default_path)
         if nvcc is None:
             raise EnvironmentError('The nvcc binary could not be '
-                                   'located in your $PATH. Either add it to your path, or set $CUDAHOME')
+                                   'located in your $PATH. '
+                                   'Either add it to your path, '
+                                   'or set $CUDAHOME')
         home = os.path.dirname(os.path.dirname(nvcc))
 
     cudaconfig = {'home': home, 'nvcc': nvcc,
                   'include': pjoin(home, 'include'),
                   'lib64': pjoin(home, 'lib64')}
-    for k, v in cudaconfig.iteritems():
+    for k, v in cudaconfig.items():
         if not os.path.exists(v):
-            raise EnvironmentError('The CUDA %s path could not be located in %s' % (k, v))
+            raise EnvironmentError('The CUDA %s path could not '
+                                   'be located in %s' % (k, v))
 
     return cudaconfig
 
@@ -86,7 +93,7 @@ def customize_compiler_for_nvcc(self):
     # object but distutils doesn't have the ability to change compilers
     # based on source extension: we add it.
     def _compile(obj, src, ext, cc_args, extra_postargs, pp_opts):
-        print extra_postargs
+        print(extra_postargs)
         if os.path.splitext(src)[1] == '.cu':
             # use the cuda for .cu files
             self.set_executable('compiler_so', CUDA['nvcc'])
@@ -137,8 +144,10 @@ ext_modules = [
               language='c++',
               runtime_library_dirs=[CUDA['lib64']],
               # this syntax is specific to this build system
-              # we're only going to use certain compiler args with nvcc and not with gcc
-              # the implementation of this trick is in customize_compiler() below
+              # we're only going to use certain compiler args with
+              # nvcc and not with gcc
+              # the implementation of this trick is in
+              # customize_compiler() below
               extra_compile_args={'gcc': ["-Wno-unused-function"],
                                   'nvcc': ['-arch=sm_35',
                                            '--ptxas-options=-v',

@@ -82,11 +82,16 @@ and set the path in `yolo2-pytorch/cfgs/exps/darknet19_exp1.py`.
 7. (optional) Training with TensorBoard.
 
     To use the TensorBoard, install Crayon (https://github.com/torrvision/crayon)
+    How to use the crayon
+    ```
+    docker pull alband/crayon
+    docker run -d -p 8888:8888 -p 8889:8889 --name crayon alband/crayon
+    ```
+
 and set `use_tensorboard = True` in `yolo2-pytorch/cfgs/config.py`.
 
 
 6. Run the training program: `python train.py`.
-
 
 
 ### Evaluation

@@ -6,9 +6,8 @@
 
 import xml.etree.ElementTree as ET
 import os
-import cPickle
+import pickle
 import numpy as np
-import pdb
 
 
 def parse_rec(filename):
@@ -64,6 +63,7 @@ def voc_ap(rec, prec, use_07_metric=False):
         ap = np.sum((mrec[i + 1] - mrec[i]) * mpre[i + 1])
     return ap
 
+
 def voc_eval(detpath,
              annopath,
              imagesetfile,
@@ -111,16 +111,16 @@ def voc_eval(detpath,
         for i, imagename in enumerate(imagenames):
             recs[imagename] = parse_rec(annopath.format(imagename))
             if i % 100 == 0:
-                print 'Reading annotation for {:d}/{:d}'.format(
-                    i + 1, len(imagenames))
+                print('Reading annotation for {:d}/{:d}'.format(
+                    i + 1, len(imagenames)))
         # save
-        print 'Saving cached annotations to {:s}'.format(cachefile)
-        with open(cachefile, 'w') as f:
-            cPickle.dump(recs, f)
+        print('Saving cached annotations to {:s}'.format(cachefile))
+        with open(cachefile, 'wb') as f:
+            pickle.dump(recs, f)
     else:
         # load
-        with open(cachefile, 'r') as f:
-            recs = cPickle.load(f)
+        with open(cachefile, 'rb') as f:
+            recs = pickle.load(f)
 
     # extract gt objects for this class
     class_recs = {}
@@ -148,7 +148,6 @@ def voc_eval(detpath,
 
         # sort by confidence
         sorted_ind = np.argsort(-confidence)
-        sorted_scores = np.sort(-confidence)
         BB = BB[sorted_ind, :]
         image_ids = [image_ids[x] for x in sorted_ind]
 
@@ -201,8 +200,8 @@ def voc_eval(detpath,
         prec = tp / np.maximum(tp + fp, np.finfo(np.float64).eps)
         ap = voc_ap(rec, prec, use_07_metric)
     else:
-         rec = -1
-         prec = -1
-         ap = -1
+        rec = -1
+        prec = -1
+        ap = -1
 
     return rec, prec, ap

@@ -14,7 +14,9 @@ class RoIPool(nn.Module):
     def forward(self, features, rois):
         batch_size, num_channels, data_height, data_width = features.size()
         num_rois = rois.size()[0]
-        outputs = Variable(torch.zeros(num_rois, num_channels, self.pooled_height, self.pooled_width)).cuda()
+        outputs = Variable(torch.zeros(num_rois, num_channels,
+                                       self.pooled_height,
+                                       self.pooled_width)).cuda()
 
         for roi_ind, roi in enumerate(rois):
             batch_ind = int(roi[0].data[0])
@@ -42,7 +44,6 @@ class RoIPool(nn.Module):
                     else:
                         data = features[batch_ind]
                         outputs[roi_ind, :, ph, pw] = torch.max(
-                            torch.max(data[:, hstart:hend, wstart:wend], 1)[0], 2)[0].view(-1)
+                            torch.max(data[:, hstart:hend, wstart:wend], 1)[0], 2)[0].view(-1)  # noqa
 
         return outputs
-

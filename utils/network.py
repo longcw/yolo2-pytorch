@@ -5,10 +5,12 @@ import numpy as np
 
 
 class Conv2d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, relu=True, same_padding=False):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
+                 relu=True, same_padding=False):
         super(Conv2d, self).__init__()
         padding = int((kernel_size - 1) / 2) if same_padding else 0
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding=padding)
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size,
+                              stride, padding=padding)
         self.relu = nn.LeakyReLU(0.1, inplace=True) if relu else None
 
     def forward(self, x):
@@ -19,11 +21,13 @@ class Conv2d(nn.Module):
 
 
 class Conv2d_BatchNorm(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, relu=True, same_padding=False):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
+                 relu=True, same_padding=False):
         super(Conv2d_BatchNorm, self).__init__()
         padding = int((kernel_size - 1) / 2) if same_padding else 0
 
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding=padding, bias=False)
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size,
+                              stride, padding=padding, bias=False)
         self.bn = nn.BatchNorm2d(out_channels, momentum=0.01)
         self.relu = nn.LeakyReLU(0.1, inplace=True) if relu else None
 
@@ -51,14 +55,14 @@ class FC(nn.Module):
 def save_net(fname, net):
     import h5py
     h5f = h5py.File(fname, mode='w')
-    for k, v in net.state_dict().items():
+    for k, v in list(net.state_dict().items()):
         h5f.create_dataset(k, data=v.cpu().numpy())
 
 
 def load_net(fname, net):
     import h5py
     h5f = h5py.File(fname, mode='r')
-    for k, v in net.state_dict().items():
+    for k, v in list(net.state_dict().items()):
         param = torch.from_numpy(np.asarray(h5f[k]))
         v.copy_(param)
 
@@ -67,7 +71,7 @@ def load_pretrained_npy(faster_rcnn_model, fname):
     params = np.load(fname).item()
     # vgg16
     vgg16_dict = faster_rcnn_model.rpn.features.state_dict()
-    for name, val in vgg16_dict.items():
+    for name, val in list(vgg16_dict.items()):
         # # print name
         # # print val.size()
         # # print param.size()
@@ -86,7 +90,7 @@ def load_pretrained_npy(faster_rcnn_model, fname):
     # fc6 fc7
     frcnn_dict = faster_rcnn_model.state_dict()
     pairs = {'fc6.fc': 'fc6', 'fc7.fc': 'fc7'}
-    for k, v in pairs.items():
+    for k, v in list(pairs.items()):
         key = '{}.weight'.format(k)
         param = torch.from_numpy(params[v]['weights']).permute(1, 0)
         frcnn_dict[key].copy_(param)
