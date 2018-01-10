@@ -114,4 +114,4 @@ The forward pass requires that you supply 4 arguments to the network:
 - `gt_classes` - A list of `numpy` arrays, where each array contains an integer value corresponding to the class of each bounding box provided in `gt_boxes`
 - `dontcare` - a list of lists
 
-Licence: MIT
+License: MIT license (MIT)
