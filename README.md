@@ -113,3 +113,5 @@ The forward pass requires that you supply 4 arguments to the network:
 - `gt_boxes` - A list of `numpy` arrays, where each one is of size `N x 4`, where `N` is the number of features in the image.  The four values in each row should correspond to `x_bottom_left`, `y_bottom_left`, `x_top_right`, and `y_top_right`.  
 - `gt_classes` - A list of `numpy` arrays, where each array contains an integer value corresponding to the class of each bounding box provided in `gt_boxes`
 - `dontcare` - a list of lists
+
+Licence: MIT
