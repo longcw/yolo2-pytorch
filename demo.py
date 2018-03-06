@@ -14,7 +14,7 @@ def preprocess(fname):
     # return fname
     image = cv2.imread(fname)
     im_data = np.expand_dims(
-        yolo_utils.preprocess_test((image, None, cfg.inp_size))[0], 0)
+        yolo_utils.preprocess_test((image, None, cfg.multi_scale_inp_size), 0)[0], 0)
     return image, im_data
 
 

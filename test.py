@@ -15,7 +15,7 @@ import cfgs.config as cfg
 def preprocess(fname):
     # return fname
     image = cv2.imread(fname)
-    im_data = np.expand_dims(yolo_utils.preprocess_test(image, cfg.inp_size), 0)  # noqa
+    im_data = np.expand_dims(yolo_utils.preprocess_test(image, cfg.multi_scale_inp_size), 0)  # noqa
     return image, im_data
 
 
