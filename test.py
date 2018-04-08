@@ -24,7 +24,7 @@ args = parser.parse_args()
 imdb_name = cfg.imdb_test
 # trained_model = cfg.trained_model
 trained_model = os.path.join(cfg.train_output_dir,
-                             'darknet19_voc07trainval_exp3_118.h5')
+                             'darknet19_voc07trainval_exp3_73.h5')
 output_dir = cfg.test_output_dir
 
 max_per_image = 300
@@ -126,7 +126,7 @@ if __name__ == '__main__':
     # data loader
     imdb = VOCDataset(imdb_name, cfg.DATA_DIR, cfg.batch_size,
                       yolo_utils.preprocess_test,
-                      processes=2, shuffle=False, dst_size=cfg.multi_scale_inp_size)
+                      processes=1, shuffle=False, dst_size=cfg.multi_scale_inp_size)
 
     net = Darknet19()
     net_utils.load_net(trained_model, net)

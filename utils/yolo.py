@@ -88,12 +88,13 @@ def preprocess_train(data, size_index):
 def preprocess_test(data, size_index):
 
     im, _, inp_size = data
-    inp_size = inp_size[size_index]
+
     if isinstance(im, str):
         im = cv2.imread(im)
     ori_im = np.copy(im)
 
-    if inp_size is not None:
+    if inp_size is not None and size_index is not None:
+        inp_size = inp_size[size_index]
         w, h = inp_size
         im = cv2.resize(im, (w, h))
     im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)

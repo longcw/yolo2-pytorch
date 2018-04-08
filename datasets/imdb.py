@@ -64,9 +64,10 @@ class ImageDataset(object):
 
                 # multi-scale
                 w, h = cfg.multi_scale_inp_size[size_index]
-                gt_boxes = gt_boxes.astype(float)
-                gt_boxes[:, 0::2] *= float(w) / images.shape[1]
-                gt_boxes[:, 1::2] *= float(h) / images.shape[0]
+                gt_boxes = np.asarray(gt_boxes, dtype=np.float)
+                if len(gt_boxes) > 0:
+                    gt_boxes[:, 0::2] *= float(w) / images.shape[1]
+                    gt_boxes[:, 1::2] *= float(h) / images.shape[0]
                 images = cv2.resize(images, (w, h))
 
                 batch['images'].append(images)
