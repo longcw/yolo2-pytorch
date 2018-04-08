@@ -15,12 +15,6 @@ def mkdir(path, max_depth=3):
         os.mkdir(path)
 
 
-def image_resize(im, size_index):
-    w, h = cfg.multi_scale_inp_size[size_index]
-    im = cv2.resize(im, (w, h))
-    return im
-
-
 class ImageDataset(object):
     def __init__(self, name, datadir, batch_size, im_processor,
                  processes=3, shuffle=True, dst_size=None):
@@ -51,22 +45,42 @@ class ImageDataset(object):
         batch = {'images': [], 'gt_boxes': [], 'gt_classes': [],
                  'dontcare': [], 'origin_im': []}
         i = 0
+        if self.gen is None:
+            indexes = np.arange(len(self.image_names), dtype=np.int)
+            if self._shuffle:
+                np.random.shuffle(indexes)
+            self.gen = self.pool.imap(partial(self._im_processor,
+                                              size_index=None),
+                                      ([self.image_names[i],
+                                        self.get_annotation(i),
+                                        self.dst_size] for i in indexes),
+                                      chunksize=self.batch_size)
+            self._epoch += 1
+            print(('epoch {} start...'.format(self._epoch)))
+
         while i < self.batch_size:
             try:
                 images, gt_boxes, classes, dontcare, origin_im = next(self.gen)
-                images = image_resize(images, size_index)
+
+                # multi-scale
+                w, h = cfg.multi_scale_inp_size[size_index]
+                gt_boxes = gt_boxes.astype(float)
+                gt_boxes[:, 0::2] *= float(w) / images.shape[1]
+                gt_boxes[:, 1::2] *= float(h) / images.shape[0]
+                images = cv2.resize(images, (w, h))
+
                 batch['images'].append(images)
                 batch['gt_boxes'].append(gt_boxes)
                 batch['gt_classes'].append(classes)
                 batch['dontcare'].append(dontcare)
                 batch['origin_im'].append(origin_im)
                 i += 1
-            except (StopIteration, AttributeError, TypeError):
+            except (StopIteration,):
                 indexes = np.arange(len(self.image_names), dtype=np.int)
                 if self._shuffle:
                     np.random.shuffle(indexes)
                 self.gen = self.pool.imap(partial(self._im_processor,
-                                                  size_index=size_index),
+                                                  size_index=None),
                                           ([self.image_names[i],
                                             self.get_annotation(i),
                                             self.dst_size] for i in indexes),

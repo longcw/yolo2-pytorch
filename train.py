@@ -12,9 +12,9 @@ import cfgs.config as cfg
 from random import randint
 
 try:
-    from pycrayon import CrayonClient
+    from tensorboardX import SummaryWriter
 except ImportError:
-    CrayonClient = None
+    SummaryWriter = None
 
 
 # data loader
@@ -42,22 +42,12 @@ optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=cfg.momentum,
                             weight_decay=cfg.weight_decay)
 
 # tensorboad
-use_tensorboard = cfg.use_tensorboard and CrayonClient is not None
+use_tensorboard = cfg.use_tensorboard and SummaryWriter is not None
 # use_tensorboard = False
-remove_all_log = False
 if use_tensorboard:
-    cc = CrayonClient(hostname='127.0.0.1')
-    if remove_all_log:
-        print('remove all experiments')
-        cc.remove_all_experiments()
-    if start_epoch == 0:
-        try:
-            cc.remove_experiment(cfg.exp_name)
-        except ValueError:
-            pass
-        exp = cc.create_experiment(cfg.exp_name)
-    else:
-        exp = cc.open_experiment(cfg.exp_name)
+    summary_writer = SummaryWriter(os.path.join(cfg.TRAIN_DIR, 'runs', cfg.exp_name))
+else:
+    summary_writer = None
 
 batch_per_epoch = imdb.batch_per_epoch
 train_loss = 0
@@ -81,7 +71,7 @@ for step in range(start_epoch * imdb.batch_per_epoch,
     im_data = net_utils.np_to_variable(im,
                                        is_cuda=True,
                                        volatile=False).permute(0, 3, 1, 2)
-    net(im_data, gt_boxes, gt_classes, dontcare, size_index)
+    bbox_pred, iou_pred, prob_pred = net(im_data, gt_boxes, gt_classes, dontcare, size_index)
 
     # backward
     loss = net.loss
@@ -106,12 +96,22 @@ for step in range(start_epoch * imdb.batch_per_epoch,
                 iou_loss, cls_loss, duration,
                 str(datetime.timedelta(seconds=int((batch_per_epoch - step_cnt) * duration))))))  # noqa
 
-        if use_tensorboard and step % cfg.log_interval == 0:
-            exp.add_scalar_value('loss_train', train_loss, step=step)
-            exp.add_scalar_value('loss_bbox', bbox_loss, step=step)
-            exp.add_scalar_value('loss_iou', iou_loss, step=step)
-            exp.add_scalar_value('loss_cls', cls_loss, step=step)
-            exp.add_scalar_value('learning_rate', lr, step=step)
+        if summary_writer and step % cfg.log_interval == 0:
+            summary_writer.add_scalar('loss_train', train_loss, step)
+            summary_writer.add_scalar('loss_bbox', bbox_loss, step)
+            summary_writer.add_scalar('loss_iou', iou_loss, step)
+            summary_writer.add_scalar('loss_cls', cls_loss, step)
+            summary_writer.add_scalar('learning_rate', lr, step)
+
+            # plot results
+            bbox_pred = bbox_pred.data[0:1].cpu().numpy()
+            iou_pred = iou_pred.data[0:1].cpu().numpy()
+            prob_pred = prob_pred.data[0:1].cpu().numpy()
+            image = im[0]
+            bboxes, scores, cls_inds = yolo_utils.postprocess(
+                bbox_pred, iou_pred, prob_pred, image.shape, cfg, thresh=0.3, size_index=size_index)
+            im2show = yolo_utils.draw_detection(image, bboxes, scores, cls_inds, cfg)
+            summary_writer.add_image('predict', im2show, step)
 
         train_loss = 0
         bbox_loss, iou_loss, cls_loss = 0., 0., 0.

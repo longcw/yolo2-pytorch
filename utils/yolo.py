@@ -6,6 +6,12 @@ from utils.nms_wrapper import nms
 from utils.cython_yolo import yolo_to_bbox
 
 
+# This prevents deadlocks in the data loader, caused by
+# some incompatibility between pytorch and cv2 multiprocessing.
+# See https://github.com/pytorch/pytorch/issues/1355.
+cv2.setNumThreads(0)
+
+
 def clip_boxes(boxes, im_shape):
     """
     Clip boxes to image boundaries.
@@ -50,7 +56,7 @@ def _offset_boxes(boxes, im_shape, scale, offs, flip):
 
 def preprocess_train(data, size_index):
     im_path, blob, inp_size = data
-    inp_size = inp_size[size_index]
+
     boxes, gt_classes = blob['boxes'], blob['gt_classes']
 
     im = cv2.imread(im_path)
@@ -60,7 +66,8 @@ def preprocess_train(data, size_index):
     scale, offs, flip = trans_param
     boxes = _offset_boxes(boxes, im.shape, scale, offs, flip)
 
-    if inp_size is not None:
+    if inp_size is not None and size_index is not None:
+        inp_size = inp_size[size_index]
         w, h = inp_size
         boxes[:, 0::2] *= float(w) / im.shape[1]
         boxes[:, 1::2] *= float(h) / im.shape[0]
@@ -126,7 +133,7 @@ def postprocess(bbox_pred, iou_pred, prob_pred, im_shape, cfg, thresh=0.05,
     prob_pred = prob_pred[(np.arange(prob_pred.shape[0]), cls_inds)]
     scores = iou_pred * prob_pred
     # scores = iou_pred
-
+    assert len(scores) == len(bbox_pred), '{}, {}'.format(scores.shape, bbox_pred.shape)
     # threshold
     keep = np.where(scores >= thresh)
     bbox_pred = bbox_pred[keep]

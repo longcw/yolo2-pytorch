@@ -9,6 +9,11 @@ import utils.network as net_utils
 from utils.timer import Timer
 import cfgs.config as cfg
 
+# This prevents deadlocks in the data loader, caused by
+# some incompatibility between pytorch and cv2 multiprocessing.
+# See https://github.com/pytorch/pytorch/issues/1355.
+cv2.setNumThreads(0)
+
 
 def preprocess(fname):
     # return fname
