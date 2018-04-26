@@ -4,27 +4,30 @@ implementation of YOLOv2.
 This project is mainly based on [darkflow](https://github.com/thtrieu/darkflow)
 and [darknet](https://github.com/pjreddie/darknet).
 
-For details about YOLO and YOLOv2 please refer to their [project page](https://pjreddie.com/darknet/yolo/) 
-and the [paper](https://arxiv.org/abs/1612.08242):
-YOLO9000: Better, Faster, Stronger by Joseph Redmon and Ali Farhadi.
-
 I used a Cython extension for postprocessing and 
 `multiprocessing.Pool` for image preprocessing.
 Testing an image in VOC2007 costs about 13~20ms.
 
-**NOTE:**
+For details about YOLO and YOLOv2 please refer to their [project page](https://pjreddie.com/darknet/yolo/) 
+and the [paper](https://arxiv.org/abs/1612.08242):
+*YOLO9000: Better, Faster, Stronger by Joseph Redmon and Ali Farhadi*.
+
+**NOTE 1:**
 This is still an experimental project.
 VOC07 test mAP is about 0.71 (trained on VOC07+12 trainval,
 reported by [@cory8249](https://github.com/longcw/yolo2-pytorch/issues/23)).
-See https://github.com/longcw/yolo2-pytorch/issues/1 and https://github.com/longcw/yolo2-pytorch/issues/23
+See [issue1](https://github.com/longcw/yolo2-pytorch/issues/1) 
+and [issue23](https://github.com/longcw/yolo2-pytorch/issues/23)
 for more details about training.
 
-BTW, I recommend to write your own dataloader using [torch.utils.data.Dataset](http://pytorch.org/docs/data.html)
-since `multiprocessing.Pool.imap` won't stop even there is no enough memory space.
+**NOTE 2:**
+I recommend to write your own dataloader using [torch.utils.data.Dataset](http://pytorch.org/docs/data.html)
+since `multiprocessing.Pool.imap` won't stop even there is no enough memory space. 
+An example of `dataloader` for VOCDataset: [issue71](https://github.com/longcw/yolo2-pytorch/issues/71).
 
 
 
-### Installation and demo
+## Installation and demo
 1. Clone this repository
     ```bash
     git clone git@github.com:longcw/yolo2-pytorch.git
@@ -39,7 +42,7 @@ since `multiprocessing.Pool.imap` won't stop even there is no enough memory spac
 and set the model path in `demo.py`
 4. Run demo `python demo.py`. 
 
-### Training YOLOv2
+## Training YOLOv2
 You can train YOLO2 on any dataset. Here we train it on VOC2007/2012.
 
 1. Download the training, validation, test data and VOCdevkit
@@ -90,7 +93,7 @@ and set the path in `yolo2-pytorch/cfgs/exps/darknet19_exp1.py`.
 6. Run the training program: `python train.py`.
 
 
-### Evaluation
+## Evaluation
 
 Set the path of the `trained_model` in `yolo2-pytorch/cfgs/config.py`.
 ```bash
@@ -98,7 +101,7 @@ cd faster_rcnn_pytorch
 mkdir output
 python test.py
 ```
-### Training on your own data
+## Training on your own data
 
 The forward pass requires that you supply 4 arguments to the network:
 
