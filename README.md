@@ -25,6 +25,9 @@ I recommend to write your own dataloader using [torch.utils.data.Dataset](http:/
 since `multiprocessing.Pool.imap` won't stop even there is no enough memory space. 
 An example of `dataloader` for VOCDataset: [issue71](https://github.com/longcw/yolo2-pytorch/issues/71).
 
+**NOTE 3:**
+Upgrade to PyTorch 0.4: https://github.com/longcw/yolo2-pytorch/issues/59
+
 
 
 ## Installation and demo
