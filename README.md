@@ -1,4 +1,6 @@
 # YOLOv2 in PyTorch
+**NOTE: This project is no longer maintained and may not compatible with the newest pytorch (after 0.4.0).**
+
 This is a [PyTorch](https://github.com/pytorch/pytorch)
 implementation of YOLOv2.
 This project is mainly based on [darkflow](https://github.com/thtrieu/darkflow)
