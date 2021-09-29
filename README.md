@@ -84,7 +84,7 @@ you can set the data path as following.
     ln -s $VOCdevkit VOCdevkit2007
     ```
     
-5. Download the [pretrained darknet19 model](https://drive.google.com/file/d/0B4pXCfnYmG1WRG52enNpcV80aDg/view?usp=sharing)
+5. Download the [pretrained darknet19 model (link updated)](https://drive.google.com/file/d/0B4pXCfnYmG1WRG52enNpcV80aDg/view?usp=sharing&resourcekey=0-LUq4HFw9tSLKqMcPZeWsaQ)
 and set the path in `yolo2-pytorch/cfgs/exps/darknet19_exp1.py`.
 
 7. (optional) Training with TensorBoard.
